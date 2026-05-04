@@ -6,6 +6,7 @@ use App\Http\Controllers\Authcontroller as AuthController;
 use App\Http\Controllers\PresensiController; 
 use App\Http\Controllers\SiswaController;
 use App\Http\Controllers\JurusanController;
+use App\Http\Controllers\FaceRecognitionController;
 
 Route::middleware(['guest:siswa'])->group(function(){
     
@@ -34,6 +35,11 @@ Route::middleware(['auth:siswa'])->group(function(){
     //presensi
     Route::get('/presensi/create',[PresensiController::class, 'create'])->name('presensi.create'); 
     Route::post('/presensi/store', [PresensiController::class, 'store'])->name('presensi.store');
+
+    // Face Recognition Absensi
+    Route::get('/presensi/face', [FaceRecognitionController::class, 'absenFacePage'])->name('presensi.face');
+    Route::post('/presensi/face/store', [FaceRecognitionController::class, 'storeAbsenFace'])->name('presensi.face.store');
+    Route::get('/face/descriptors', [FaceRecognitionController::class, 'getDescriptors'])->name('face.descriptors');
 
     //ubah profile
     Route::get('/presensi/editprofile',[PresensiController::class, 'editprofile'])->name('presensi.editprofile');
@@ -77,4 +83,9 @@ Route::middleware(['auth:user'])->group(function(){
     Route::get('/presensi/izin-sakit', [PresensiController::class, 'izinSakit']);
     Route::post('/presensi/approve-izin-sakit', [PresensiController::class, 'approveIzinSakit']);
     Route::get('/presensi/batalkan-izin-sakit/{id}', [PresensiController::class, 'batalkanIzinSakit']);
+
+    // Face Recognition - Admin (daftarkan wajah siswa)
+    Route::get('/siswa/{nisn}/enroll-face', [FaceRecognitionController::class, 'enrollPage'])->name('face.enroll');
+    Route::post('/face/save-descriptor', [FaceRecognitionController::class, 'saveDescriptor'])->name('face.save');
+    Route::post('/face/delete-descriptor', [FaceRecognitionController::class, 'deleteDescriptor'])->name('face.delete');
 });

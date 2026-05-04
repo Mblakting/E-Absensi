@@ -12,10 +12,10 @@
                 <strong>Riwayat</strong>
             </div>
         </a>
-        <a href="/presensi/create" class="item">
+        <a href="/presensi/face" class="item">
             <div class="col">
                 <div class="action-button large">
-                    <ion-icon name="camera" aria-label="absen"></ion-icon>
+                    <ion-icon name="scan" aria-label="absen"></ion-icon>
                 </div>
             </div>
         </a>
