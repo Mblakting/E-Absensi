@@ -18,7 +18,7 @@ class RedirectIfAuthenticated
             if (Auth::guard($guard)->check()) {
                 
                 if ($guard === 'user') {
-                    return redirect()->route('/panel/dashboardadmin'); // Admin aktif -> ke dashboard admin
+                    return redirect()->route('dashboardadmin'); // Admin aktif -> ke dashboard admin
                 }
                 
                 return redirect()->route('dashboard'); // Siswa aktif -> ke dashboard siswa

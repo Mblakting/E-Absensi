@@ -78,12 +78,14 @@
                                                 <td>{{$j->kode_jurusan}}</td>
                                                 <td>{{$j->nama_jurusan}}</td>
                                                 <td>
-                                                    <a href="#" class="btn btn-sm btn-outline-primary edit" kode_jurusan="{{ $j->kode_jurusan }}">
-                                                    Edit  
+                                                    <a href="#" class="btn btn-sm btn-outline-primary edit" kode_jurusan="{{ $j->kode_jurusan }}" title="Edit Jurusan">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" /><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" /><path d="M16 5l3 3" /></svg>
+                                                        Edit
                                                     </a>
-                                                    <form action="/jurusan/{{$j->kode_jurusan}}/delete" method="POST">
+                                                    <form action="/jurusan/{{$j->kode_jurusan}}/delete" method="POST" style="display:inline;">
                                                         @csrf
-                                                        <a href="#" class="btn btn-sm btn-outline-danger mt-2 delete-confirm"> 
+                                                        <a href="#" class="btn btn-sm btn-outline-danger delete-confirm" title="Hapus Jurusan">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>
                                                             Hapus
                                                         </a>
                                                     </form>
@@ -194,16 +196,15 @@
 
         $(".delete-confirm").click(function(e){
             var form = $(this).closest('form');
-            e.preventDefault
+            e.preventDefault();
             Swal.fire({
-                title: "Menghapus Data?",
-                text: "Anda yakin ingin menghapus data ini?",
+                title: "Hapus Data Jurusan?",
+                text: "Data jurusan ini akan dihapus permanen!",
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonText: "Ya, Hapus!",
                 cancelButtonText: "Batal",
-                dangerMode: true,
-                confirmButtonColor: '#d33', 
+                confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -214,61 +215,14 @@
             });
         });
 
-        $("#frmSiswa").submit(function(){
-            var nisn = $("#nisn").val();
-            var nama_lengkap = $("#nama_lengkap").val();
-            var kelas = $("#kelas").val();
-            var no_hp = $("#no_hp").val();
-            var kode_jurusan = $("frmSiswa").find("#kode_jurusan").val();
+        $("#frmJurusan").submit(function(){
+            var kode_jurusan = $("#kode_jurusan").val();
+            var nama_jurusan = $("#nama_jurusan").val();
 
-            if(nisn==""){
+            if(kode_jurusan==""){
                 Swal.fire({
                 title: 'Warning!',
-                text: 'NISN harus diisi',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-                }).then((result)=>{
-                    $("#nisn").focus();
-                })
-                return false;
-            }
-            else if(nama_lengkap==""){
-                Swal.fire({
-                title: 'Warning!',
-                text: 'Nama harus diisi',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-                }).then((result)=>{
-                    $("#nama_lengkap").focus();
-                })
-                return false;
-            }
-            else if(kelas==""){
-                Swal.fire({
-                title: 'Warning!',
-                text: 'Kelas harus diisi',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-                }).then((result)=>{
-                    $("#kelas").focus();
-                })
-                return false;
-            }
-            else if(no_hp==""){
-                Swal.fire({
-                title: 'Warning!',
-                text: 'Nomor HP harus diisi',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-                }).then((result)=>{
-                    $("#no_hp").focus();
-                })
-                return false;
-            }
-            else if(kode_jurusan==""){
-                Swal.fire({
-                title: 'Warning!',
-                text: 'Jurusan harus diisi',
+                text: 'Kode Jurusan harus diisi',
                 icon: 'warning',
                 confirmButtonText: 'OK'
                 }).then((result)=>{
@@ -276,7 +230,17 @@
                 })
                 return false;
             }
-
+            else if(nama_jurusan==""){
+                Swal.fire({
+                title: 'Warning!',
+                text: 'Nama Jurusan harus diisi',
+                icon: 'warning',
+                confirmButtonText: 'OK'
+                }).then((result)=>{
+                    $("#nama_jurusan").focus();
+                })
+                return false;
+            }
         })
     });
 </script>

@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Authcontroller as AuthController;
 use App\Http\Controllers\PresensiController; 
 use App\Http\Controllers\SiswaController;
 use App\Http\Controllers\JurusanController;
@@ -32,7 +32,7 @@ Route::middleware(['auth:siswa'])->group(function(){
     Route::get('/proseslogout', [AuthController::class, 'proseslogout'])->name('proseslogout');
 
     //presensi
-    Route::get('/presensi/create',[PresensiController::class, 'create']); 
+    Route::get('/presensi/create',[PresensiController::class, 'create'])->name('presensi.create'); 
     Route::post('/presensi/store', [PresensiController::class, 'store'])->name('presensi.store');
 
     //ubah profile

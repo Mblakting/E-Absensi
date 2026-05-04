@@ -40,6 +40,7 @@
     @include('layouts.bottonNav')
 
     @include('layouts.script')
+    @stack('myscript')
 
 </body>
 

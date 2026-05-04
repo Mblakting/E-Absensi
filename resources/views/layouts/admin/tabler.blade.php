@@ -64,5 +64,6 @@
      crossorigin=""></script>
 
     @stack('myscript')
+    @stack('myscripts')
   </body>
 </html>

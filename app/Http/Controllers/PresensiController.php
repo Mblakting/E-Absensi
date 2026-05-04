@@ -12,13 +12,6 @@ use Illuminate\Support\Facades\Log; // Tambahkan untuk logging
 
 class PresensiController extends Controller
 {
-    // FUNGSI DEBUG UNTUK MENGHASILKAN HASH PASSWORD (HAPUS SETELAH DIGUNAKAN)
-    public function generateHash($password = '123455')
-    {
-        $hash = Hash::make($password);
-        return "Password Asli: " . $password . " <br>Hash Bcrypt yang Valid: <b>" . $hash . "</b><br><br>Salin string hash di atas dan paste di kolom 'password' database.";
-    }
-    
     public function create()
     {
         $hariini = date('Y-m-d');
@@ -31,133 +24,111 @@ class PresensiController extends Controller
         return view('presensi.create', compact('cek'));
     }
 
-public function store(Request $request)
+    public function store(Request $request)
     {
-        // Mendapatkan data dari request
         $nisn = Auth::guard('siswa')->user()->nisn;
         $tgl_presensi = date('Y-m-d');
         $jam = date('H:i:s');
-        
-        // Data Lokasi
-        $latitudesekolah = -7.671325;
+
+        // Data Lokasi & Gambar
+        $latitudesekolah  = -7.671325;
         $longitudesekolah = 110.589607;
         $lokasi = $request->lokasi;
-        
-        // Pastikan 'lokasi' dan 'image' tersedia
-        $image = $request->image; // Asumsikan $request->image adalah base64 string
-        
-        if(!$lokasi || !$image) {
+        $image  = $request->image; // base64 data URI dari WebcamJS
+
+        // Validasi input wajib
+        if (!$lokasi || !$image) {
             return response()->json(['status' => 'gagal', 'message' => 'Data tidak lengkap (lokasi atau gambar hilang)'], 422);
         }
 
-        // Hitung Jarak
-        $lokasiuser = explode(",",$lokasi);
-        $latitudeuser = $lokasiuser[0];
-        $longitudeuser = $lokasiuser[1];
-        $jarak = $this->distance($latitudesekolah, $longitudesekolah, $latitudeuser, $longitudeuser);
+        // Hitung jarak ke sekolah
+        $lokasiuser   = explode(',', $lokasi);
+        $latitudeuser  = trim($lokasiuser[0]);
+        $longitudeuser = trim($lokasiuser[1]);
+        $jarak  = $this->distance($latitudesekolah, $longitudesekolah, $latitudeuser, $longitudeuser);
         $radius = round($jarak['meters']);
 
-        // Validasi Jarak
-        if($radius > 200){ 
+        // Validasi radius (20 km untuk development, ubah ke 200 untuk production)
+        if ($radius > 20000) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Anda berada di luar area sekolah ' . $radius . ' meter!',
-                'type' => 'out'
+                'type'    => 'out'
             ]);
         }
-        
-        // Pengecekan apakah sudah absen masuk hari ini
-        $cek = \DB::table('presensi')
+
+        // Cek apakah sudah absen masuk hari ini
+        $cek = DB::table('presensi')
             ->where('nisn', $nisn)
             ->where('tgl_presensi', $tgl_presensi)
-            ->first(); // Menggunakan first() untuk mendapatkan detail
+            ->first();
 
-        if($cek) {
-            $ket = "out";
-        } else {
-            $ket = "in";
+        $ket = $cek ? 'out' : 'in';
+
+        // Proses simpan gambar
+        // WebcamJS menghasilkan: "data:image/jpeg;base64,/9j/4AAQ..."
+        $image_parts = explode(';base64,', $image);
+        if (count($image_parts) !== 2) {
+            return response()->json(['status' => 'gagal', 'message' => 'Format gambar tidak valid'], 400);
         }
 
-        $folderPath = "uploads/absensi/";
-        $formatName = $nisn . "-" . $tgl_presensi . "-" . $ket;
-        $image_parts = explode(';base64,', $image);
-        
-        if(count($image_parts) === 2) {
-            $image_base64 = base64_decode($image_parts[1]);
-            $fileName = $formatName . '.png';
-            $file = $folderPath . $fileName;
+        $image_base64 = base64_decode($image_parts[1]);
+        if ($image_base64 === false) {
+            return response()->json(['status' => 'gagal', 'message' => 'Gagal decode gambar'], 400);
+        }
 
-            // Logika Presensi
-            if($cek){
-                // SUDAH ABSEN MASUK (Cek untuk Pulang/OUT)
-                
-                if(!empty($cek->jam_out)){
-                    // Sudah absen masuk dan sudah absen pulang
-                    return response()->json(['status' => 'gagal', 'message' => 'Anda sudah melakukan presensi masuk dan pulang hari ini'], 409);
-                }
+        $formatName = $nisn . '-' . $tgl_presensi . '-' . $ket;
+        $fileName   = $formatName . '.jpg'; // WebcamJS image_format: jpeg
+        $filePath   = 'uploads/absensi/' . $fileName; // path relatif di disk public
 
-                $data_pulang = [
-                    'jam_out' => $jam,
-                    'foto_out' => $fileName,
-                    'lokasi_out' => $lokasi,
-                ];
+        // Pastikan folder ada
+        Storage::disk('public')->makeDirectory('uploads/absensi');
 
-                // Simpan gambar sebelum update database
-                // KOREKSI: Gunakan disk 'public'
-                $saved = Storage::disk('public')->put($file, $image_base64);
+        // Simpan gambar ke storage/app/public/uploads/absensi/
+        $saved = Storage::disk('public')->put($filePath, $image_base64);
 
-                if($saved){
-                    $update = DB::table('presensi')
-                        ->where('tgl_presensi', $tgl_presensi)
-                        ->where('nisn', $nisn)
-                        ->update($data_pulang);
+        if (!$saved) {
+            Log::error("Gagal simpan foto absensi: $filePath");
+            return response()->json(['status' => 'gagal', 'message' => 'Gagal menyimpan foto'], 500);
+        }
 
-                    if($update){
-                        return response()->json([
-                            'status' => 'success',
-                            'message' => 'Hati-Hati Di Jalan!',
-                            'type' => 'out'
-                        ]);
-                    } else {
-                        // Jika $update mengembalikan 0 (walaupun harusnya tidak terjadi di sini)
-                        return response()->json(['status' => 'gagal', 'message' => 'Gagal update database untuk presensi pulang']);
-                    }
-                } else {
-                    return response()->json(['status' => 'gagal', 'message' => 'Gagal upload file untuk presensi pulang']);
-                }
-
-            } else {
-                // BELUM ABSEN MASUK (IN)
-                $dataDb = [
-                    'nisn' => $nisn,
-                    'tgl_presensi' => $tgl_presensi,
-                    'jam_in' => $jam,
-                    'foto_in' => $fileName,
-                    'lokasi_in' => $lokasi,
-                ];
-
-                // Simpan gambar sebelum insert database
-                // KOREKSI: Gunakan disk 'public'
-                $saved = Storage::disk('public')->put($file, $image_base64);
-
-                if($saved) {
-                    $simpan = \DB::table('presensi')->insert($dataDb);
-                    
-                    if($simpan){
-                        return response()->json([
-                            'status' => 'success',
-                            'message' => 'Selamat Belajar!',
-                            'type' => 'in'
-                        ]);
-                    } else {
-                        return response()->json(['status' => 'gagal', 'message' => 'Gagal simpan database untuk presensi masuk']);
-                    }
-                } else {
-                    return response()->json(['status' => 'gagal', 'message' => 'Gagal upload file untuk presensi masuk']);
-                }
+        // Logika presensi masuk / pulang
+        if ($cek) {
+            // Sudah absen masuk — proses absen pulang
+            if (!empty($cek->jam_out)) {
+                return response()->json(['status' => 'gagal', 'message' => 'Anda sudah melakukan presensi masuk dan pulang hari ini'], 409);
             }
+
+            DB::table('presensi')
+                ->where('tgl_presensi', $tgl_presensi)
+                ->where('nisn', $nisn)
+                ->update([
+                    'jam_out'    => $jam,
+                    'foto_out'   => $fileName,
+                    'lokasi_out' => $lokasi,
+                ]);
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Hati-Hati Di Jalan!',
+                'type'    => 'out'
+            ]);
+
         } else {
-            return response()->json(['status' => 'gagal', 'message' => 'Format gambar tidak valid'], 400);
+            // Belum absen masuk — proses absen masuk
+            DB::table('presensi')->insert([
+                'nisn'         => $nisn,
+                'tgl_presensi' => $tgl_presensi,
+                'jam_in'       => $jam,
+                'foto_in'      => $fileName,
+                'lokasi_in'    => $lokasi,
+            ]);
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Selamat Belajar!',
+                'type'    => 'in'
+            ]);
         }
     }
 

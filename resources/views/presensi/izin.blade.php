@@ -61,7 +61,7 @@
 </div>
 
 <div class="fab-button bottom-right" style="margin-bottom: 70px;">
-    <a href="/presensi/buatizin" class="fab">
+    <a href="/presensi/buatizin" class="fab" title="Buat Pengajuan Izin Baru">
         <ion-icon name="add-outline"></ion-icon>
     </a>
 </div>

@@ -12,6 +12,8 @@ class siswa extends Authenticatable
 
     protected $table = 'siswa';
     protected $primaryKey = 'nisn';
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     protected $fillable = [
         'nisn',
@@ -36,7 +38,9 @@ class siswa extends Authenticatable
             'password' => 'hashed',
         ];
     }
-}
-{
-    //
+
+    public function jurusan()
+    {
+        return $this->belongsTo(Jurusan::class, 'kode_jurusan', 'kode_jurusan');
+    }
 }

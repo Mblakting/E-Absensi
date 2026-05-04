@@ -6,8 +6,15 @@
         <div class="row g-2 align-items-center">
             <div class="col">
                 <h2 class="page-title">
-                    <i class="ti ti-calendar-event me-2"></i> Data Izin atau Sakit Siswa
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2 text-primary" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" /><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" /><path d="M10 14l4 0" /><path d="M12 12l0 4" /></svg>
+                    Data Izin / Sakit Siswa
                 </h2>
+            </div>
+            <div class="col-auto ms-auto">
+                <button class="btn btn-outline-success" onclick="window.print()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /><path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /><path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg>
+                    Cetak
+                </button>
             </div>
         </div>
     </div>
@@ -19,6 +26,9 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="table-responsive">
+                            <div class="mb-3">
+                                <input type="text" id="searchIzin" class="form-control" placeholder="🔍 Cari nama siswa, NISN, atau keterangan...">
+                            </div>
                             <table class="table card-table table-vcenter text-nowrap table-bordered" id="izinSakitTable">
                                 <thead>
                                     <tr>
@@ -77,12 +87,16 @@
                                                     <a href="#" class="btn btn-sm btn-primary"
                                                         data-id-izin-sakit="{{ $d->id }}" data-bs-toggle="modal"
                                                         data-bs-target="#modal-izin-sakit">
-                                                        <i class="ti ti-check me-1"></i> Proses
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm me-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                                                        Proses
                                                     </a>
                                                 @else
                                                     {{-- Tombol untuk membatalkan persetujuan --}}
-                                                    <a href="/presensi/batalkan-izin-sakit/{{ $d->id }}" class="btn btn-sm btn-danger btn-batalkan-izin">
-                                                        <i class="ti ti-x me-1"></i> Batalkan
+                                                    <a href="#" class="btn btn-sm btn-danger btn-batalkan-izin"
+                                                       data-href="/presensi/batalkan-izin-sakit/{{ $d->id }}"
+                                                       data-nama="{{ $d->nama_lengkap }}">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm me-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>
+                                                        Batalkan
                                                     </a>
                                                 @endif
                                             </div>
@@ -146,23 +160,41 @@
 
 @push('myscript')
 <script>
-    // Inisialisasi jQuery (asumsi jQuery sudah dimuat)
     $(function() {
         // 1. Mengisi ID ke dalam Modal saat tombol 'Proses' diklik
         $(document).on('click', '[data-id-izin-sakit]', function(e) {
             e.preventDefault();
-            // Ambil ID dari custom attribute 'data-id-izin-sakit'
             var id_izin_sakit = $(this).data("id-izin-sakit");
-            // Masukkan ID tersebut ke dalam hidden input di form modal
             $("#id_izin_sakit_form").val(id_izin_sakit);
         });
 
-        // 2. Konfirmasi Pembatalan Izin/Sakit (Improvement UX)
+        // 2. Konfirmasi Pembatalan Izin/Sakit dengan SweetAlert2
         $(document).on('click', '.btn-batalkan-izin', function(e) {
-            var href = $(this).attr('href');
-            if (!confirm('Apakah Anda yakin ingin membatalkan status izin/sakit ini?')) {
-                e.preventDefault();
-            }
+            e.preventDefault();
+            var href = $(this).data('href');
+            var nama = $(this).data('nama');
+            Swal.fire({
+                title: 'Batalkan Status?',
+                text: 'Status izin/sakit ' + nama + ' akan dikembalikan ke Pending.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ya, Batalkan!',
+                cancelButtonText: 'Tidak'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    window.location.href = href;
+                }
+            });
+        });
+
+        // 3. Search/Filter tabel
+        $("#searchIzin").on("keyup", function() {
+            var value = $(this).val().toLowerCase();
+            $("#izinSakitTable tbody tr").filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+            });
         });
     });
 </script>

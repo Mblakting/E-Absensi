@@ -74,7 +74,7 @@ return [
         ],
         'siswas' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_SISWA_MODEL', App\Models\Siswa::class),
+            'model' => env('AUTH_SISWA_MODEL', App\Models\siswa::class),
         ],
 
         // 'users' => [

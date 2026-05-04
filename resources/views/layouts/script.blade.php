@@ -14,9 +14,8 @@
     <script src="{{ asset('assets/js/plugins/owl-carousel/owl.carousel.min.js') }}" defer></script>
     <script src="{{ asset('assets/js/plugins/jquery-circle-progress/circle-progress.min.js') }}" defer></script>
 
-    <!-- WebcamJS and SweetAlert (defer) -->
+    <!-- WebcamJS and SweetAlert -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.26/webcam.min.js"></script>
-    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js" defer></script>
     <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
 
     <!-- Base JS (app-specific) -->

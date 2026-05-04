@@ -16,8 +16,8 @@
 ?>
 @foreach($presensi as $d)
 @php
-$foto_in=Storage::url('uploads/absensi/'.$d->foto_in);
-$foto_out=Storage::url('uploads/absensi/'.$d->foto_out);
+$foto_in  = $d->foto_in  ? Storage::url('uploads/absensi/'.$d->foto_in)  : null;
+$foto_out = $d->foto_out ? Storage::url('uploads/absensi/'.$d->foto_out) : null;
 @endphp
     <tr>
         <td>{{$loop->iteration}}</td>
@@ -26,12 +26,16 @@ $foto_out=Storage::url('uploads/absensi/'.$d->foto_out);
         <td>{{$d->nama_jurusan}}</td>
         <td>{{$d->jam_in}}</td>
         <td>
-            <img src="{{url($foto_in)}}" class="avatar" alt="">
+            @if($foto_in)
+                <img src="{{$foto_in}}" class="avatar" alt="Foto Masuk" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">
+            @else
+                <img src="{{ asset('assets/img/kosong.jpg') }}" class="avatar" alt="No Photo" style="width:50px;">
+            @endif
         </td>
         <td>{!! $d->jam_out ? $d->jam_out : '<span class="badge bg-danger">Belum Absen Pulang</span>' !!}</td>
         <td>
-            @if($d->jam_out!=null)
-            <img src="{{url($foto_in)}}" class="avatar" alt="">
+            @if($d->jam_out && $foto_out)
+            <img src="{{$foto_out}}" class="avatar" alt="Foto Pulang" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">
             @else
             <img src="{{ asset('assets/img/kosong.jpg') }}" 
                                                         alt="No Photo" 
@@ -48,7 +52,7 @@ $foto_out=Storage::url('uploads/absensi/'.$d->foto_out);
                     $menit = ltrim($waktu_pecah[1], '0') ?: '0'; 
                 @endphp
 
-                <span class="badge bg-danger">
+                <span class="badge bg-danger badge-terlambat">
                     Terlambat:
                     @if($jam > 0)
                         {{$jam}} Jam, 

@@ -44,13 +44,13 @@
                                     <div class="row">
                                         <div class="col-6">
                                             <div class="form-group">
-                                                <input type="text" class="form-control" name="nama_siswa" id="nama_siswa" placeholder="Cari Nama Siswa" value="{{ request('nama_siswa') }}">
+                                                <input type="text" class="form-control" name="nama_siswa" id="nama_siswa" placeholder="🔍 Cari Nama Siswa" value="{{ request('nama_siswa') }}">
                                             </div>
                                         </div>
                                         <div class="col-2">
                                             <div class="form-group">
                                                 <select name="kode_jurusan" id="kode_jurusan" class="form-select">
-                                                    <option value="">Pilih Jurusan</option>
+                                                    <option value="">Semua Jurusan</option>
                                                         @foreach($jurusan as $j)
                                                             <option value="{{$j->kode_jurusan}}" 
                                                                 {{ request()->get('kode_jurusan') == $j->kode_jurusan ? 'selected' : '' }}>
@@ -62,11 +62,17 @@
                                         </div>
                                         <div class="col-2">
                                             <div class="form-group">
-                                                <button type="submit" class="btn btn-primary">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-search"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg>
+                                                <button type="submit" class="btn btn-primary w-100">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg>
                                                     Cari
                                                 </button>
                                             </div>    
+                                        </div>
+                                        <div class="col-2">
+                                            <a href="/siswa" class="btn btn-outline-secondary w-100">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                                                Reset
+                                            </a>
                                         </div>
                                     </div>
                                 </form>
@@ -117,14 +123,15 @@
                                             <td>{{ $item->no_hp ?? '-' }}</td>
                                             <td>{{ $item->nama_jurusan ?? '-' }}</td>
                                             <td>
-                                                <a href="#" class="btn btn-sm btn-outline-primary edit" nisn="{{ $item->nisn }}">
-                                                    Edit  
+                                                <a href="#" class="btn btn-sm btn-outline-primary edit" nisn="{{ $item->nisn }}" title="Edit Data Siswa">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" /><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" /><path d="M16 5l3 3" /></svg>
+                                                    Edit
                                                 </a>
-                                                <form action="/siswa/{{$item->nisn}}/delete" method="POST" id="deleteForm{{$item->nisn}}">
+                                                <form action="/siswa/{{$item->nisn}}/delete" method="POST" id="deleteForm{{$item->nisn}}" style="display:inline;">
                                                     @csrf
-                                                    {{-- Tambahkan attribut data-form agar JavaScript tahu form mana yang harus disubmit --}}
-                                                    <a href="#" class="btn btn-sm btn-outline-danger mt-2 delete-confirm" 
-                                                    data-form-id="deleteForm{{$item->nisn}}"> 
+                                                    <a href="#" class="btn btn-sm btn-outline-danger delete-confirm" 
+                                                       data-form-id="deleteForm{{$item->nisn}}" title="Hapus Data Siswa">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" /><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>
                                                         Hapus
                                                     </a>
                                                 </form>
@@ -282,16 +289,15 @@
 
         $(".delete-confirm").click(function(e){
             var form = $(this).closest('form');
-            e.preventDefault
+            e.preventDefault();
             Swal.fire({
-                title: "Menghapus Data?",
-                text: "Anda yakin ingin menghapus data siswa ini?",
+                title: "Hapus Data Siswa?",
+                text: "Data siswa ini akan dihapus permanen dan tidak bisa dikembalikan!",
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonText: "Ya, Hapus!",
                 cancelButtonText: "Batal",
-                dangerMode: true,
-                confirmButtonColor: '#d33', 
+                confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -307,7 +313,7 @@
             var nama_lengkap = $("#nama_lengkap").val();
             var kelas = $("#kelas").val();
             var no_hp = $("#no_hp").val();
-            var kode_jurusan = $("frmSiswa").find("#kode_jurusan").val();
+            var kode_jurusan = $("#frmSiswa").find("#kode_jurusan").val();
 
             if(nisn==""){
                 Swal.fire({

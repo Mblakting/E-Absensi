@@ -57,7 +57,6 @@
 @endsection
 
 @push('myscripts')
-<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
 <script>
   $(document).ready(function(){
     $('#frmIzin').submit(function(e){

@@ -38,17 +38,19 @@ class DashboardController extends Controller
             
         // 3. Rekap Presensi Bulanan (Hadir/Terlambat/Izin)
         $rekappresensi = DB::table('presensi')
-            // Catatan: Jika Anda memiliki tabel Izin/Sakit terpisah, logika jmlizin perlu disesuaikan.
             ->selectRaw('COUNT(nisn) as jmlhadir, SUM(IF(jam_in > "07:00:00", 1, 0)) as jmlterlambat')
             ->where('nisn', $nisn)
-            // Menggunakan parameter binding pada whereRaw untuk keamanan
             ->whereRaw('MONTH(tgl_presensi) = ?', [$bulanini]) 
             ->whereRaw('YEAR(tgl_presensi) = ?', [$tahunini])
             ->first();
 
+        if (!$rekappresensi) {
+            $rekappresensi = (object)['jmlhadir' => 0, 'jmlterlambat' => 0];
+        }
+
         // 4. Leaderboard Hari Ini
         $leaderboard = DB::table('presensi')
-            // PERBAIKAN: Join ke tabel siswa menggunakan kolom 'nisn' yang benar
+            ->select('presensi.*', 'siswa.nama_lengkap', 'siswa.kelas', 'siswa.foto')
             ->join('siswa', 'presensi.nisn', '=', 'siswa.nisn') 
             ->where('tgl_presensi', $hariini)
             ->orderBy('jam_in')
@@ -64,8 +66,12 @@ class DashboardController extends Controller
             ->where('nisn', $nisn)
             ->whereRaw('MONTH(tgl_izin) = ?', [$bulanini])
             ->whereRaw('YEAR(tgl_izin) = ?', [$tahunini])
-            ->where('status_approved',1) // Exclude rejected izin
+            ->where('status_approved', 1)
             ->first();
+
+        if (!$rekapizin) {
+            $rekapizin = (object)['jmlizin' => 0, 'jmlsakit' => 0];
+        }
         
         // Memastikan semua variabel yang diperlukan (termasuk $leaderboard) di compact
         return view('dashboard.dashboard', compact('presensihariini', 'historibulanini', 'namabulan', 'bulanini', 'tahunini', 'rekappresensi', 'leaderboard', 'rekapizin'));
@@ -76,14 +82,24 @@ class DashboardController extends Controller
         $hariini = date('Y-m-d');
         $rekappresensi = DB::table('presensi')
             ->selectRaw('COUNT(nisn) as jmlhadir, SUM(IF(jam_in > "07:00:00", 1, 0)) as jmlterlambat')
-            ->where('tgl_presensi', $hariini)   
+            ->where('tgl_presensi', $hariini)
             ->first();
+
+        // Pastikan tidak null
+        if (!$rekappresensi) {
+            $rekappresensi = (object)['jmlhadir' => 0, 'jmlterlambat' => 0];
+        }
 
         $rekapizin = DB::table('pengajuan_izin')
             ->selectRaw('SUM(IF(status = "i", 1, 0)) as jmlizin, SUM(IF(status = "s", 1, 0)) as jmlsakit')
-            ->where('tgl_izin', $hariini)   
-            ->where('status_approved',1) // Exclude rejected izin
+            ->where('tgl_izin', $hariini)
+            ->where('status_approved', 1)
             ->first();
+
+        // Pastikan tidak null
+        if (!$rekapizin) {
+            $rekapizin = (object)['jmlizin' => 0, 'jmlsakit' => 0];
+        }
 
         return view('dashboard.dashboardadmin', compact('rekappresensi', 'rekapizin'));
     }

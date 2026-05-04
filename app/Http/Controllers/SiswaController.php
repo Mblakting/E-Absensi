@@ -113,13 +113,11 @@ public function store(Request $request){
      * Memperbarui data siswa yang sudah ada.
      */
     public function update(Request $request, $nisn_param){
-        // Use route parameter to locate the record (safer if nisn in form is readonly or changed)
         $nisn = $request->nisn;
         $nama_lengkap = $request->nama_lengkap;
         $kelas = $request->kelas;
         $no_hp = $request->no_hp;
         $kode_jurusan = $request->kode_jurusan;
-        $password = Hash::make('12345');
 
         // Find the siswa by the route parameter (original record)
         $siswa = DB::table('siswa')->where('nisn', $nisn_param)->first();
@@ -129,7 +127,7 @@ public function store(Request $request){
         }
 
         $old_foto_name = $siswa->foto;
-        $disk_path = 'uploads/foto_siswa'; // relative to the 'public' disk
+        $disk_path = 'uploads/foto_siswa';
 
         // Compute new foto name only if a new file is uploaded
         $foto = $old_foto_name;
@@ -139,34 +137,28 @@ public function store(Request $request){
         }
 
         try {
-            // Prepare data to update
+            // Prepare data to update — password TIDAK direset saat update data siswa
             $data = [
                 'nama_lengkap' => $nama_lengkap,
-                'kelas' => $kelas,
-                'no_hp' => $no_hp,
+                'kelas'        => $kelas,
+                'no_hp'        => $no_hp,
                 'kode_jurusan' => $kode_jurusan,
-                'foto' => $foto,
-                'password' => $password
+                'foto'         => $foto,
             ];
 
-            // Update using the original record identifier
             $update = DB::table('siswa')->where('nisn', $nisn_param)->update($data);
 
-            // If a new file was uploaded, handle file replacement
             if ($request->hasFile('foto')) {
-                // Delete old photo only when it exists and is present in the public disk
                 if (!empty($old_foto_name)) {
                     $old_path = $disk_path . '/' . $old_foto_name;
                     if (Storage::disk('public')->exists($old_path)) {
                         Storage::disk('public')->delete($old_path);
                     }
                 }
-
-                // Store the new photo into storage/app/public/uploads/foto_siswa
                 $request->file('foto')->storeAs($disk_path, $foto, 'public');
             }
 
-            if ($update || $request->hasFile('foto')) {
+            if ($update !== false || $request->hasFile('foto')) {
                 return Redirect::back()->with(['success' => 'Data Diupdate!']);
             }
 
