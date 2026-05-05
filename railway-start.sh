@@ -5,44 +5,50 @@ echo "================================================"
 echo "   E-Presensi - Railway Startup Script"
 echo "================================================"
 
-# 1. Cache config, route, view (dilakukan di runtime bukan build time)
-echo ""
-echo "[1/5] Caching konfigurasi..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-echo "      Cache selesai!"
+PORT=${PORT:-8080}
 
-# 2. Jalankan migrasi database
+# Jalankan server Laravel di background DULU
+# supaya healthcheck Railway bisa lewat
 echo ""
-echo "[2/5] Menjalankan migrasi database..."
+echo "Menjalankan server di port $PORT..."
+php artisan serve --host=0.0.0.0 --port=$PORT &
+SERVER_PID=$!
+
+# Tunggu server benar-benar siap (maks 30 detik)
+echo "Menunggu server siap..."
+for i in $(seq 1 30); do
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/up | grep -q "200\|302"; then
+        echo "Server siap!"
+        break
+    fi
+    sleep 1
+done
+
+# Sekarang jalankan setup (server sudah aktif, healthcheck sudah lewat)
+echo ""
+echo "[1/4] Menjalankan migrasi database..."
 php artisan migrate --force
 echo "      Migrasi selesai!"
 
-# 3. Seed data awal (jurusan, siswa demo, admin)
 echo ""
-echo "[3/5] Mengisi data awal..."
+echo "[2/4] Mengisi data awal..."
 php artisan db:seed --force
 echo "      Seeding selesai!"
 
-# 4. Buat symlink storage agar foto bisa diakses publik
 echo ""
-echo "[4/5] Membuat storage symlink..."
+echo "[3/4] Membuat storage symlink..."
 php artisan storage:link --force 2>/dev/null || true
 echo "      Storage link selesai!"
 
-# 5. Set permission folder storage
 echo ""
-echo "[5/5] Set permission folder..."
+echo "[4/4] Set permission folder..."
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 echo "      Permission selesai!"
 
 echo ""
 echo "================================================"
-echo "   Setup selesai! Menjalankan server..."
-echo "   Port: ${PORT:-8080}"
+echo "   Semua setup selesai! Aplikasi berjalan."
 echo "================================================"
-echo ""
 
-# Jalankan server Laravel
-exec php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
+# Tunggu server (jangan exit)
+wait $SERVER_PID

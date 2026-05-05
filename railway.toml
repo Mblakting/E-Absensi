@@ -1,13 +1,9 @@
 [build]
 builder = "railpack"
 
-[build.environment]
-PHP_VERSION = "8.4"
-NODE_VERSION = "20"
-
 [deploy]
 startCommand = "bash railway-start.sh"
 healthcheckPath = "/up"
-healthcheckTimeout = 60
+healthcheckTimeout = 120
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
