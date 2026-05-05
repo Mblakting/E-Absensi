@@ -73,11 +73,11 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', 'App\Models\User'),
+            'model' => App\Models\User::class,
         ],
         'siswas' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_SISWA_MODEL', 'App\Models\Siswa'),
+            'model' => App\Models\Siswa::class,
         ],
 
         // 'users' => [
