@@ -5,6 +5,13 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+// Always delete config cache on every request in production on Railway
+// Railpack generates a stale config.php at build time that breaks auth
+$configCache = __DIR__ . '/../bootstrap/cache/config.php';
+if (file_exists($configCache)) {
+    @unlink($configCache);
+}
+
 // Determine if the application is in maintenance mode...
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;
