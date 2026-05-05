@@ -29,7 +29,7 @@
 
 @section('content')
     <!-- App Capsule -->
-    <div id="row" style="margin-top:70px;">
+    <div id="row" style="margin-top:14px;">
         <div class="col">
             <input type="hidden" id="lokasi">
             <div class="webcam-capture"></div>

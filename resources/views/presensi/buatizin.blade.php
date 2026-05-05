@@ -1,8 +1,8 @@
-﻿@extends('layouts.presensi')
+@extends('layouts.presensi')
 @section('header')
 <div class = "appHeader bg-primary text light">
     <div class="left">
-        <a href="/dashboard" class="headerButton goBack">
+        <a href="{{ route('dashboard') }}" class="headerButton goBack">
             <ion-icon name="chevron-back-outline"></ion-icon>
         </a>
     </div>
@@ -12,7 +12,7 @@
 @endsection
 
 @section('content')
-<div class="row" style="margin-top: 70px;">
+<div class="row" style="margin-top: 14px;">
     <div class="col">
         <form method="POST" action="{{ route('presensi.storeizin') }}" id="frmIzin">
             @csrf

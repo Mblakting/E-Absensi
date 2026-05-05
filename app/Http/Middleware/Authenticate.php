@@ -7,23 +7,25 @@ use Illuminate\Http\Request;
 
 class Authenticate extends Middleware
 {
+    /**
+     * Redirect unauthenticated users ke halaman login yang sesuai.
+     * Guard 'user' → /panel (admin), selainnya → / (siswa).
+     */
     protected function redirectTo(Request $request): ?string
     {
-        if (! $request->expectsJson()) {
-            // Cek guards yang sedang digunakan dari route middleware
-            $guards = $this->guards ?? [];
-            if (in_array('user', $guards)) {
-                return route('loginadmin'); // Admin gagal -> ke /panel
-            }
-            return route('login'); // Siswa gagal -> ke /
+        if ($request->expectsJson()) {
+            return null;
         }
-        return null;
-    }
 
-    protected function authenticate($request, array $guards)
-    {
-        // Simpan guards agar bisa diakses di redirectTo
-        $this->guards = $guards;
-        parent::authenticate($request, $guards);
+        // Periksa middleware yang terdaftar di route saat ini
+        $routeMiddleware = $request->route()?->gatherMiddleware() ?? [];
+
+        foreach ($routeMiddleware as $mw) {
+            if (is_string($mw) && str_starts_with($mw, 'auth:user')) {
+                return route('loginadmin');
+            }
+        }
+
+        return route('login');
     }
 }

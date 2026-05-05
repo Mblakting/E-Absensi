@@ -2,7 +2,7 @@
 @section('header')
 <div class = "appHeader bg-primary text light">
     <div class="left">
-        <a href="/dashboard" class="headerButton goBack">
+        <a href="{{ route('dashboard') }}" class="headerButton goBack">
             <ion-icon name="chevron-back-outline"></ion-icon>
         </a>
     </div>
@@ -12,7 +12,7 @@
 @endsection
 
 @section('content')
-<div class="row" style="margin-top:70px">
+<div class="row" style="margin-top:14px">
     <div class="col">
         @if($dataizin->count() > 0)
             <table class="table table-hover table-bordered">
@@ -61,7 +61,7 @@
 </div>
 
 <div class="fab-button bottom-right" style="margin-bottom: 70px;">
-    <a href="/presensi/buatizin" class="fab" title="Buat Pengajuan Izin Baru">
+    <a href="{{ route('presensi.buatizin') }}" class="fab" title="Buat Pengajuan Izin Baru">
         <ion-icon name="add-outline"></ion-icon>
     </a>
 </div>

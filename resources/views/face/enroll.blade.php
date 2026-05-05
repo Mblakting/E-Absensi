@@ -12,7 +12,7 @@
                 <p class="text-muted mt-1">Rekam data wajah untuk absensi face recognition</p>
             </div>
             <div class="col-auto">
-                <a href="/siswa" class="btn btn-outline-secondary">
+                <a href="{{ route('siswa.index') }}" class="btn btn-outline-secondary">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon me-1"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l14 0" /><path d="M5 12l6 6" /><path d="M5 12l6 -6" /></svg>
                     Kembali ke Data Siswa
                 </a>
@@ -251,12 +251,13 @@ document.getElementById('btnCapture').addEventListener('click', async () => {
     captureCanvas.width  = videoEl.videoWidth;
     captureCanvas.height = videoEl.videoHeight;
     captureCanvas.getContext('2d').drawImage(videoEl, 0, 0);
+    // Ambil base64 snapshot untuk disimpan sebagai foto profil
+    const fotoSnapshot = captureCanvas.toDataURL('image/jpeg', 0.85);
 
     document.getElementById('capturePreview').style.display = 'block';
     document.getElementById('btnCapture').style.display = 'none';
     document.getElementById('btnRetake').style.display = 'block';
 
-    // Kirim descriptor ke server
     const btn = document.getElementById('btnCapture');
     btn.disabled = true;
 
@@ -268,8 +269,9 @@ document.getElementById('btnCapture').addEventListener('click', async () => {
                 'X-CSRF-TOKEN': CSRF_TOKEN,
             },
             body: JSON.stringify({
-                nisn: NISN,
-                descriptor: currentDescriptor,
+                nisn:          NISN,
+                descriptor:    currentDescriptor,
+                foto_snapshot: fotoSnapshot,   // kirim snapshot wajah sebagai foto profil
             }),
         });
 

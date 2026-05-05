@@ -2,18 +2,18 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class siswa extends Authenticatable
+class Siswa extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use Notifiable;
 
-    protected $table = 'siswa';
+    protected $table      = 'siswa';
     protected $primaryKey = 'nisn';
-    protected $keyType = 'string';
-    public $incrementing = false;
+    protected $keyType    = 'string';
+    public    $incrementing = false;
 
     protected $fillable = [
         'nisn',
@@ -21,26 +21,58 @@ class siswa extends Authenticatable
         'kelas',
         'no_hp',
         'foto',
-        'face_descriptor',
         'kode_jurusan',
         'password',
+        'face_descriptor',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'face_descriptor',
     ];
 
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
 
+    // ─── Relationships ────────────────────────────────────────────────────────
+
     public function jurusan()
     {
         return $this->belongsTo(Jurusan::class, 'kode_jurusan', 'kode_jurusan');
+    }
+
+    public function presensi()
+    {
+        return $this->hasMany(Presensi::class, 'nisn', 'nisn');
+    }
+
+    public function pengajuanIzin()
+    {
+        return $this->hasMany(PengajuanIzin::class, 'nisn', 'nisn');
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    /**
+     * URL foto profil siswa (fallback ke avatar default).
+     */
+    public function getFotoUrlAttribute(): string
+    {
+        return !empty($this->foto)
+            ? asset('storage/uploads/foto_siswa/' . $this->foto)
+            : asset('assets/img/sample/avatar/avatar1.jpg');
+    }
+
+    /**
+     * Apakah siswa sudah mendaftarkan wajah.
+     */
+    public function getHasFaceAttribute(): bool
+    {
+        return !empty($this->face_descriptor);
     }
 }

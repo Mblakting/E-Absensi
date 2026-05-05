@@ -2,7 +2,7 @@
 @section('header')
 <div class = "appHeader bg-primary text light">
     <div class="left">
-        <a href="/dashboard" class="headerButton goBack">
+        <a href="{{ route('dashboard') }}" class="headerButton goBack">
             <ion-icon name="chevron-back-outline"></ion-icon>
         </a>
     </div>
@@ -12,7 +12,7 @@
 @endsection
 
 @section('content')
-<div class="row" style="margin-top: 5rem; margin-bottom: -3rem;">
+<div class="row" style="margin-top: 14px; margin-bottom: -3rem;">
     <div class="col text-center">
         @if (session('success'))
         <div class="alert alert-success" role="alert">
@@ -26,7 +26,7 @@
         @endif
     </div>
 </div>
-<form action="/presensi/{{$siswa->nisn}}/updateprofile" method="POST" enctype="multipart/form-data" style="margin-top: 4rem;">
+<form action="{{ route('presensi.updateprofile') }}" method="POST" enctype="multipart/form-data" style="margin-top: 4rem;">
     @csrf
     <div class="col">
         <div class="form-group boxed">

@@ -34,23 +34,25 @@
                   <div class="small text-muted">{{ Auth::guard('user')->user()->email ?? '' }}</div>
                 </div>
                 <div class="dropdown-divider"></div>
-                <a href="/panel/dashboardadmin" class="dropdown-item">
+                <a href="{{ route('dashboardadmin') }}" class="dropdown-item">
                   <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /></svg>
                   Dashboard
                 </a>
                 <div class="dropdown-divider"></div>
-                <a href="{{ route('proseslogoutadmin') }}" class="dropdown-item text-danger"
-                   onclick="return confirm('Yakin ingin logout?')">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M9 12h12l-3 -3" /><path d="M18 15l3 -3" /></svg>
-                  Logout
-                </a>
+                <form action="{{ route('proseslogoutadmin') }}" method="POST" onsubmit="return confirm('Yakin ingin logout?')">
+                  @csrf
+                  <button type="submit" class="dropdown-item text-danger" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M9 12h12l-3 -3" /><path d="M18 15l3 -3" /></svg>
+                    Logout
+                  </button>
+                </form>
               </div>
             </div>
           </div>
 
           <div class="collapse navbar-collapse" id="navbar-menu">
             <div>
-              <form action="/siswa" method="get" autocomplete="off" novalidate>
+              <form action="{{ route('siswa.index') }}" method="get" autocomplete="off" novalidate>
                 <div class="input-icon">
                   <span class="input-icon-addon">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /><path d="M21 21l-6 -6" /></svg>

@@ -4,11 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\siswa;
+use App\Models\Siswa;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log; // Import Log untuk debugging
+use Illuminate\Support\Facades\Log;
 
 class SiswaController extends Controller
 {
@@ -17,168 +16,163 @@ class SiswaController extends Controller
      */
     public function index(Request $request)
     {
-        $query=siswa::query();
-        $query->select('siswa.*','nama_jurusan');
-        $query->join('jurusan', 'siswa.kode_jurusan', '=', 'jurusan.kode_jurusan');
-        $query->orderBy('nama_lengkap');
+        $query = Siswa::query()
+            ->select('siswa.*', 'nama_jurusan')
+            ->join('jurusan', 'siswa.kode_jurusan', '=', 'jurusan.kode_jurusan')
+            ->orderBy('nama_lengkap');
 
-        // Filter berdasarkan nama siswa
-        if(!empty($request->nama_siswa)){
-            $query->where('nama_lengkap','like','%'.$request->nama_siswa.'%');
+        if (!empty($request->nama_siswa)) {
+            $query->where('nama_lengkap', 'like', '%' . $request->nama_siswa . '%');
         }
 
-        // Filter berdasarkan kode jurusan
-        if(!empty($request->kode_jurusan)){
-        $query->where('siswa.kode_jurusan',$request->kode_jurusan);
+        if (!empty($request->kode_jurusan)) {
+            $query->where('siswa.kode_jurusan', $request->kode_jurusan);
         }
 
-        $siswa=$query->paginate(10);
+        $siswa   = $query->paginate(10)->withQueryString();
+        $jurusan = DB::table('jurusan')->orderBy('nama_jurusan')->get();
 
-        $jurusan = DB::table('jurusan')->get();
-            
-        return view('siswa.index', compact('siswa','jurusan')); 
+        return view('siswa.index', compact('siswa', 'jurusan'));
     }
 
     /**
      * Menyimpan data siswa baru.
      */
-public function store(Request $request){
-        $nisn = $request->nisn;
-        $nama_lengkap = $request->nama_lengkap;
-        $kelas = $request->kelas;
-        $no_hp = $request->no_hp;
-        $kode_jurusan=$request->kode_jurusan;
-        $password= Hash::make('12345');
-        
-        $foto = ""; 
-        $disk_path = "uploads/foto_siswa"; // Path dalam folder public (storage/app/public/uploads/foto_siswa)
+    public function store(Request $request)
+    {
+        $request->validate([
+            'nisn'         => 'required|string|max:20|unique:siswa,nisn',
+            'nama_lengkap' => 'required|string|max:100',
+            'kelas'        => 'required|string|max:20',
+            'no_hp'        => 'nullable|string|max:15',
+            'kode_jurusan' => 'required|string|exists:jurusan,kode_jurusan',
+            'foto'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
 
-        // Tentukan nama file foto jika diupload
+        $nisn      = $request->nisn;
+        $diskPath  = 'uploads/foto_siswa';
+        $fotoName  = '';
+
         if ($request->hasFile('foto')) {
-            $foto = $nisn.".".$request->file('foto')->getClientOriginalExtension();
+            $fotoName = $nisn . '.' . $request->file('foto')->getClientOriginalExtension();
         }
 
-        try{
-            $data = [
-                'nisn' => $nisn,
-                'nama_lengkap' => $nama_lengkap,
-                'kelas' => $kelas,
-                'no_hp' => $no_hp,
-                'kode_jurusan' => $kode_jurusan,
-                'foto' => $foto,
-                'password' => $password
-            ];
-            
-            $simpan=DB::table('siswa')->insert($data);
-            
-            if($simpan){
-                // Simpan file foto ke disk 'public'
-                if($request->hasFile('foto')){
-                    // Simpan file ke storage/app/public/uploads/foto_siswa
-                    $request->file('foto')->storeAs($disk_path, $foto, 'public');
-                }
-
-                return Redirect::back()->with(['success'=>'Data Tersimpan!']);
+        try {
+            // Upload foto dulu sebelum insert ke DB
+            if ($request->hasFile('foto')) {
+                $request->file('foto')->storeAs($diskPath, $fotoName, 'public');
             }
-        } catch (\Exception $e){
-            Log::error("Error saat menyimpan siswa: " . $e->getMessage());
-            return Redirect::back()->with(['warning'=>'Gagal menyimpan data!']);
+
+            DB::table('siswa')->insert([
+                'nisn'         => $nisn,
+                'nama_lengkap' => $request->nama_lengkap,
+                'kelas'        => $request->kelas,
+                'no_hp'        => $request->no_hp,
+                'kode_jurusan' => $request->kode_jurusan,
+                'foto'         => $fotoName,
+                'password'     => Hash::make('12345'),
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+
+            return redirect()->back()->with('success', 'Data siswa berhasil disimpan!');
+        } catch (\Exception $e) {
+            Log::error('Error menyimpan siswa: ' . $e->getMessage());
+            return redirect()->back()->with('warning', 'Gagal menyimpan data siswa!');
         }
     }
 
     /**
      * Menampilkan form edit siswa via AJAX.
-     * Diharapkan menerima parameter POST 'nisn' dan mengembalikan HTML partial.
      */
-    public function edit(Request $request) 
+    public function edit(Request $request)
     {
-        $nisn = $request->nisn;
-        
-        // 1. Ambil data Siswa berdasarkan NISN
-        $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
+        $siswa = DB::table('siswa')->where('nisn', $request->nisn)->first();
 
-        // Cek jika siswa tidak ditemukan (seperti yang sudah Anda buat)
         if (!$siswa) {
-            return response('Data siswa tidak ditemukan', 404); 
+            return response('Data siswa tidak ditemukan', 404);
         }
 
-        // 2. Wajib: Ambil data Jurusan
-        $jurusan = DB::table('jurusan')->get(); // Mengambil semua data jurusan
+        $jurusan = DB::table('jurusan')->orderBy('nama_jurusan')->get();
 
-        // 3. Kirim kedua variabel ke view
         return view('siswa.edit', compact('siswa', 'jurusan'));
     }
 
     /**
      * Memperbarui data siswa yang sudah ada.
      */
-    public function update(Request $request, $nisn_param){
-        $nisn = $request->nisn;
-        $nama_lengkap = $request->nama_lengkap;
-        $kelas = $request->kelas;
-        $no_hp = $request->no_hp;
-        $kode_jurusan = $request->kode_jurusan;
+    public function update(Request $request, $nisn)
+    {
+        $request->validate([
+            'nama_lengkap' => 'required|string|max:100',
+            'kelas'        => 'required|string|max:20',
+            'no_hp'        => 'nullable|string|max:15',
+            'kode_jurusan' => 'required|string|exists:jurusan,kode_jurusan',
+            'foto'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
 
-        // Find the siswa by the route parameter (original record)
-        $siswa = DB::table('siswa')->where('nisn', $nisn_param)->first();
+        $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
 
         if (!$siswa) {
-            return Redirect::back()->with(['warning' => 'Data siswa tidak ditemukan untuk diupdate.']);
+            return redirect()->back()->with('warning', 'Data siswa tidak ditemukan.');
         }
 
-        $old_foto_name = $siswa->foto;
-        $disk_path = 'uploads/foto_siswa';
+        $diskPath = 'uploads/foto_siswa';
+        $fotoName = $siswa->foto;
 
-        // Compute new foto name only if a new file is uploaded
-        $foto = $old_foto_name;
         if ($request->hasFile('foto')) {
-            $extension = $request->file('foto')->getClientOriginalExtension();
-            $foto = $nisn . '.' . $extension;
+            $fotoName = $nisn . '.' . $request->file('foto')->getClientOriginalExtension();
         }
 
         try {
-            // Prepare data to update — password TIDAK direset saat update data siswa
-            $data = [
-                'nama_lengkap' => $nama_lengkap,
-                'kelas'        => $kelas,
-                'no_hp'        => $no_hp,
-                'kode_jurusan' => $kode_jurusan,
-                'foto'         => $foto,
-            ];
-
-            $update = DB::table('siswa')->where('nisn', $nisn_param)->update($data);
-
+            // Upload foto baru dulu sebelum update DB
             if ($request->hasFile('foto')) {
-                if (!empty($old_foto_name)) {
-                    $old_path = $disk_path . '/' . $old_foto_name;
-                    if (Storage::disk('public')->exists($old_path)) {
-                        Storage::disk('public')->delete($old_path);
-                    }
+                // Hapus foto lama jika ada
+                if (!empty($siswa->foto)) {
+                    Storage::disk('public')->delete($diskPath . '/' . $siswa->foto);
                 }
-                $request->file('foto')->storeAs($disk_path, $foto, 'public');
+                $request->file('foto')->storeAs($diskPath, $fotoName, 'public');
             }
 
-            if ($update !== false || $request->hasFile('foto')) {
-                return Redirect::back()->with(['success' => 'Data Diupdate!']);
-            }
+            DB::table('siswa')->where('nisn', $nisn)->update([
+                'nama_lengkap' => $request->nama_lengkap,
+                'kelas'        => $request->kelas,
+                'no_hp'        => $request->no_hp,
+                'kode_jurusan' => $request->kode_jurusan,
+                'foto'         => $fotoName,
+                'updated_at'   => now(),
+            ]);
 
-            return Redirect::back()->with(['warning' => 'Tidak ada perubahan data yang disimpan.']);
+            return redirect()->back()->with('success', 'Data siswa berhasil diupdate!');
         } catch (\Exception $e) {
-            Log::error('Error saat mengupdate siswa: ' . $e->getMessage());
-            return Redirect::back()->with(['warning' => 'Gagal mengupdate data!']);
+            Log::error('Error mengupdate siswa: ' . $e->getMessage());
+            return redirect()->back()->with('warning', 'Gagal mengupdate data siswa!');
         }
     }
-    
+
     /**
-     * Menghapus data siswa
+     * Menghapus data siswa beserta foto-nya.
      */
-     public function delete($nisn)
-     {
-        $delete=DB::table('siswa')->where('nisn',$nisn)->delete();
-        if($delete){
-            return Redirect::back()->with(['success'=>'Data Dihapus']);
-        }else{
-            return Redirect::back()->with(['warning'=>'Data gagal dihapus']); 
+    public function delete($nisn)
+    {
+        $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
+
+        if (!$siswa) {
+            return redirect()->back()->with('warning', 'Data siswa tidak ditemukan.');
         }
-     }
+
+        try {
+            // Hapus foto profil jika ada
+            if (!empty($siswa->foto)) {
+                Storage::disk('public')->delete('uploads/foto_siswa/' . $siswa->foto);
+            }
+
+            DB::table('siswa')->where('nisn', $nisn)->delete();
+
+            return redirect()->back()->with('success', 'Data siswa berhasil dihapus.');
+        } catch (\Exception $e) {
+            Log::error('Error menghapus siswa: ' . $e->getMessage());
+            return redirect()->back()->with('warning', 'Gagal menghapus data siswa!');
+        }
+    }
 }

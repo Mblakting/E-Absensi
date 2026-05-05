@@ -9,20 +9,20 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RedirectIfAuthenticated
 {
+    /**
+     * Redirect pengguna yang sudah login ke dashboard yang sesuai.
+     * Admin (guard 'user') → dashboardadmin, Siswa (guard 'siswa') → dashboard.
+     */
     public function handle(Request $request, Closure $next, string ...$guards): Response
     {
-        // Tetapkan kedua guard untuk diperiksa, Admin didahulukan
-        $allRelevantGuards = ['user', 'siswa']; 
+        // Cek admin terlebih dahulu
+        if (Auth::guard('user')->check()) {
+            return redirect()->route('dashboardadmin');
+        }
 
-        foreach ($allRelevantGuards as $guard) {
-            if (Auth::guard($guard)->check()) {
-                
-                if ($guard === 'user') {
-                    return redirect()->route('dashboardadmin'); // Admin aktif -> ke dashboard admin
-                }
-                
-                return redirect()->route('dashboard'); // Siswa aktif -> ke dashboard siswa
-            }
+        // Cek siswa
+        if (Auth::guard('siswa')->check()) {
+            return redirect()->route('dashboard');
         }
 
         return $next($request);

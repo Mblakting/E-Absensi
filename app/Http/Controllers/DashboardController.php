@@ -2,104 +2,105 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth; // Import facade Auth
-use Illuminate\Support\Facades\DB;  
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    /**
+     * Dashboard siswa — statistik presensi bulan ini.
+     */
     public function index()
     {
-        // Pengecekan otentikasi
-        if (!Auth::guard('siswa')->check()) {
-            return redirect('/login')->with('error', 'Silakan login terlebih dahulu.');
-        }
+        $hariini  = now()->toDateString();
+        $bulanini = (int) now()->format('m');
+        $tahunini = (int) now()->format('Y');
 
-        $hariini = date('Y-m-d');
-        $bulanini = (int) date('m');
-        $tahunini = date('Y');
-        
-        // Menggunakan facade Auth yang sudah diimport
-        $nisn = Auth::guard('siswa')->user()->nisn; 
+        $nisn      = Auth::guard('siswa')->id();
+        $siswaData = DB::table('siswa')->where('nisn', $nisn)->first();
 
-        // 1. Presensi Hari Ini
+        $hasFaceRegistered = !empty($siswaData->face_descriptor);
+
+        $fotoUrl = !empty($siswaData->foto)
+            ? asset('storage/uploads/foto_siswa/' . $siswaData->foto)
+            : asset('assets/img/sample/avatar/avatar1.jpg');
+
+        // Presensi hari ini
         $presensihariini = DB::table('presensi')
             ->where('nisn', $nisn)
             ->where('tgl_presensi', $hariini)
             ->first();
 
-        // 2. Histori Presensi Bulan Ini (History untuk chart/list)
+        // Histori presensi bulan ini
         $historibulanini = DB::table('presensi')
             ->where('nisn', $nisn)
-            ->whereRaw('MONTH(tgl_presensi) = ?', [$bulanini])
-            ->whereRaw('YEAR(tgl_presensi) = ?', [$tahunini])
-            ->orderBy('tgl_presensi', 'DESC')
+            ->whereMonth('tgl_presensi', $bulanini)
+            ->whereYear('tgl_presensi', $tahunini)
+            ->orderBy('tgl_presensi', 'desc')
             ->get();
-            
-        // 3. Rekap Presensi Bulanan (Hadir/Terlambat/Izin)
+
+        // Rekap presensi bulanan
         $rekappresensi = DB::table('presensi')
             ->selectRaw('COUNT(nisn) as jmlhadir, SUM(IF(jam_in > "07:00:00", 1, 0)) as jmlterlambat')
             ->where('nisn', $nisn)
-            ->whereRaw('MONTH(tgl_presensi) = ?', [$bulanini]) 
-            ->whereRaw('YEAR(tgl_presensi) = ?', [$tahunini])
-            ->first();
+            ->whereMonth('tgl_presensi', $bulanini)
+            ->whereYear('tgl_presensi', $tahunini)
+            ->first() ?? (object) ['jmlhadir' => 0, 'jmlterlambat' => 0];
 
-        if (!$rekappresensi) {
-            $rekappresensi = (object)['jmlhadir' => 0, 'jmlterlambat' => 0];
-        }
-
-        // 4. Leaderboard Hari Ini
+        // Leaderboard hari ini (top 20 tercepat masuk)
         $leaderboard = DB::table('presensi')
             ->select('presensi.*', 'siswa.nama_lengkap', 'siswa.kelas', 'siswa.foto')
-            ->join('siswa', 'presensi.nisn', '=', 'siswa.nisn') 
+            ->join('siswa', 'presensi.nisn', '=', 'siswa.nisn')
             ->where('tgl_presensi', $hariini)
             ->orderBy('jam_in')
-            ->get();
-            
-        $namabulan = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 
-            7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
-        ];
+            ->limit(20)
+            ->get()
+            ->map(function ($p) {
+                $p->foto_url = !empty($p->foto)
+                    ? asset('storage/uploads/foto_siswa/' . $p->foto)
+                    : asset('assets/img/kosong.jpg');
+                return $p;
+            });
 
+        // Rekap izin/sakit bulan ini (yang disetujui)
         $rekapizin = DB::table('pengajuan_izin')
             ->selectRaw('SUM(IF(status = "i", 1, 0)) as jmlizin, SUM(IF(status = "s", 1, 0)) as jmlsakit')
             ->where('nisn', $nisn)
-            ->whereRaw('MONTH(tgl_izin) = ?', [$bulanini])
-            ->whereRaw('YEAR(tgl_izin) = ?', [$tahunini])
+            ->whereMonth('tgl_izin', $bulanini)
+            ->whereYear('tgl_izin', $tahunini)
             ->where('status_approved', 1)
-            ->first();
+            ->first() ?? (object) ['jmlizin' => 0, 'jmlsakit' => 0];
 
-        if (!$rekapizin) {
-            $rekapizin = (object)['jmlizin' => 0, 'jmlsakit' => 0];
-        }
-        
-        // Memastikan semua variabel yang diperlukan (termasuk $leaderboard) di compact
-        return view('dashboard.dashboard', compact('presensihariini', 'historibulanini', 'namabulan', 'bulanini', 'tahunini', 'rekappresensi', 'leaderboard', 'rekapizin'));
+        $namabulan = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret',    4 => 'April',
+            5 => 'Mei',     6 => 'Juni',     7 => 'Juli',      8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        return view('dashboard.dashboard', compact(
+            'presensihariini', 'historibulanini', 'namabulan', 'bulanini', 'tahunini',
+            'rekappresensi', 'leaderboard', 'rekapizin',
+            'fotoUrl', 'hasFaceRegistered'
+        ));
     }
 
+    /**
+     * Dashboard admin — ringkasan presensi hari ini.
+     */
     public function dashboardadmin()
     {
-        $hariini = date('Y-m-d');
+        $hariini = now()->toDateString();
+
         $rekappresensi = DB::table('presensi')
             ->selectRaw('COUNT(nisn) as jmlhadir, SUM(IF(jam_in > "07:00:00", 1, 0)) as jmlterlambat')
             ->where('tgl_presensi', $hariini)
-            ->first();
-
-        // Pastikan tidak null
-        if (!$rekappresensi) {
-            $rekappresensi = (object)['jmlhadir' => 0, 'jmlterlambat' => 0];
-        }
+            ->first() ?? (object) ['jmlhadir' => 0, 'jmlterlambat' => 0];
 
         $rekapizin = DB::table('pengajuan_izin')
             ->selectRaw('SUM(IF(status = "i", 1, 0)) as jmlizin, SUM(IF(status = "s", 1, 0)) as jmlsakit')
             ->where('tgl_izin', $hariini)
             ->where('status_approved', 1)
-            ->first();
-
-        // Pastikan tidak null
-        if (!$rekapizin) {
-            $rekapizin = (object)['jmlizin' => 0, 'jmlsakit' => 0];
-        }
+            ->first() ?? (object) ['jmlizin' => 0, 'jmlsakit' => 0];
 
         return view('dashboard.dashboardadmin', compact('rekappresensi', 'rekapizin'));
     }

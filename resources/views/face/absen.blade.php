@@ -1,166 +1,277 @@
 @extends('layouts.presensi')
 
 @section('header')
-<!-- App Header -->
-<div class="appHeader bg-primary text-light">
+<div class="appHeader" style="background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;">
     <div class="left">
-        <a href="javascript:;" class="headerButton goBack">
+        <a href="{{ route('dashboard') }}" class="headerButton" style="color:#fff;">
             <ion-icon name="chevron-back-outline"></ion-icon>
         </a>
     </div>
-    <div class="pageTitle">Absensi Wajah</div>
-    <div class="right"></div>
+    <div class="pageTitle" style="font-weight:700;">Absensi Wajah</div>
+    <div class="right">
+        <span id="jamHeader" style="font-size:.8rem;padding-right:10px;opacity:.9;"></span>
+    </div>
 </div>
-<!-- * App Header -->
-
 <style>
-    #videoContainer {
-        position: relative;
-        background: #000;
-        border-radius: 16px;
-        overflow: hidden;
-        width: 100%;
-    }
-    #videoEl {
-        width: 100%;
-        display: block;
-        border-radius: 16px;
-    }
-    #overlayCanvas {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        pointer-events: none;
-    }
-    .status-card {
-        border-radius: 12px;
-        padding: 12px 16px;
-        margin-top: 12px;
-        font-size: 0.9rem;
-    }
-    .face-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-    .face-badge.detected { background: #d1fae5; color: #065f46; }
-    .face-badge.searching { background: #fef3c7; color: #92400e; }
-    .face-badge.matched { background: #dbeafe; color: #1e40af; }
-    .face-badge.no-face { background: #fee2e2; color: #991b1b; }
-    #btnAbsen {
-        border-radius: 50px;
-        padding: 14px;
-        font-size: 1rem;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-    }
-    .confidence-bar {
-        height: 6px;
-        border-radius: 3px;
-        background: #e5e7eb;
-        overflow: hidden;
-        margin-top: 6px;
-    }
-    .confidence-fill {
-        height: 100%;
-        border-radius: 3px;
-        transition: width 0.3s ease;
-    }
+/* -- Video Container -- */
+#videoWrap {
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    width: 100%;
+    border-radius: 0 0 28px 28px;
+}
+#videoEl { width: 100%; display: block; }
+#overlayCanvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%; pointer-events: none;
+}
+/* -- Scan frame animasi -- */
+#scanFrame {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px; height: 200px;
+    pointer-events: none;
+}
+.sf-corner {
+    position: absolute; width: 28px; height: 28px;
+    border-color: rgba(255,255,255,0.85); border-style: solid;
+}
+.sf-tl { top:0; left:0; border-width: 3px 0 0 3px; border-radius: 6px 0 0 0; }
+.sf-tr { top:0; right:0; border-width: 3px 3px 0 0; border-radius: 0 6px 0 0; }
+.sf-bl { bottom:0; left:0; border-width: 0 0 3px 3px; border-radius: 0 0 0 6px; }
+.sf-br { bottom:0; right:0; border-width: 0 3px 3px 0; border-radius: 0 0 6px 0; }
+@keyframes scanPulse {
+    0%,100% { opacity: 0.6; transform: translate(-50%,-50%) scale(1); }
+    50%      { opacity: 1;   transform: translate(-50%,-50%) scale(1.04); }
+}
+#scanFrame { animation: scanPulse 2s ease-in-out infinite; }
+#scanFrame.matched {
+    border-color: #2fb344;
+    animation: none;
+    opacity: 1;
+}
+/* -- Status pill -- */
+#statusPill {
+    position: absolute; bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 18px; border-radius: 20px;
+    font-size: 0.78rem; font-weight: 700;
+    backdrop-filter: blur(8px);
+    white-space: nowrap;
+    transition: all 0.3s;
+}
+/* -- Match Card -- */
+#matchCard {
+    background: #fff;
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10);
+    display: none;
+    animation: slideUp 0.35s cubic-bezier(.4,0,.2,1);
+}
+@keyframes slideUp {
+    from { transform: translateY(16px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+.match-avatar-wrap {
+    position: relative;
+    width: 72px; height: 72px; flex-shrink: 0;
+}
+.match-avatar-wrap img {
+    width: 72px; height: 72px;
+    border-radius: 50%; object-fit: cover;
+    border: 3px solid #2fb344;
+}
+.match-avatar-wrap .verified-badge {
+    position: absolute; bottom: 0; right: 0;
+    width: 22px; height: 22px;
+    background: #2fb344; border-radius: 50%;
+    border: 2px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #fff;
+}
+.conf-bar-wrap {
+    height: 7px; border-radius: 4px;
+    background: #e9ecef; overflow: hidden; margin-top: 6px;
+}
+.conf-bar-fill {
+    height: 100%; border-radius: 4px;
+    transition: width 0.5s cubic-bezier(.4,0,.2,1);
+}
+/* -- Absen Button -- */
+#btnAbsen {
+    border-radius: 16px;
+    padding: 15px;
+    font-size: 1rem; font-weight: 700;
+    letter-spacing: 0.3px;
+    transition: all 0.2s;
+    border: none;
+}
+#btnAbsen:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(26,115,232,0.35);
+}
+#btnAbsen:not(:disabled):active {
+    transform: scale(0.97);
+}
+/* -- Map -- */
+#map { height: 180px; border-radius: 16px; overflow: hidden; }
+/* -- Model status -- */
+#modelStatus {
+    border-radius: 12px; padding: 11px 14px;
+    font-size: 0.82rem;
+}
+/* -- Done card -- */
+.done-card {
+    background: linear-gradient(135deg, #34a853, #1e7e34);
+    border-radius: 20px; padding: 24px; color: #fff;
+    text-align: center;
+    box-shadow: 0 6px 24px rgba(52,168,83,.35);
+}
 </style>
 @endsection
 
 @section('content')
-<div style="margin-top: 70px; padding: 12px;">
+@php
+    $siswaLogin = Auth::guard('siswa')->user();
+    // $fotoSiswa dan $hasFace sudah dikirim dari FaceRecognitionController
+@endphp
 
-    @if (!$hasFace)
-    <!-- Peringatan wajah belum terdaftar -->
-    <div class="alert alert-warning" style="border-radius:12px;">
-        <div class="d-flex align-items-start gap-2">
-            <ion-icon name="warning-outline" style="font-size:1.4rem; flex-shrink:0; margin-top:2px;"></ion-icon>
+<div style="padding-bottom: 16px;">
+
+@if (!$hasFace)
+{{-- -- Wajah belum terdaftar -- --}}
+<div style="padding: 14px 12px 0;">
+    <div style="background:#fff3cd; border-radius:16px; padding:16px; border-left:4px solid #f9a825;">
+        <div class="d-flex align-items-start gap-3">
+            <div style="font-size:2rem; flex-shrink:0;">??</div>
             <div>
-                <strong>Wajah Belum Terdaftar</strong><br>
-                <small>Hubungi admin untuk mendaftarkan data wajah kamu terlebih dahulu agar bisa absen menggunakan face recognition.</small>
+                <div style="font-weight:700; color:#856404; font-size:.9rem;">Wajah Belum Terdaftar</div>
+                <div style="font-size:.78rem; color:#856404; margin-top:4px; line-height:1.5;">
+                    Hubungi admin untuk mendaftarkan data wajah kamu agar bisa absen menggunakan face recognition.
+                </div>
             </div>
         </div>
     </div>
-    @endif
+</div>
+@endif
 
-    @if ($cek && !empty($cek->jam_out))
-    <!-- Sudah absen masuk dan pulang -->
-    <div class="alert alert-success" style="border-radius:12px;">
-        <div class="d-flex align-items-center gap-2">
-            <ion-icon name="checkmark-circle-outline" style="font-size:1.4rem;"></ion-icon>
+@if ($cek && !empty($cek->jam_out))
+{{-- -- Sudah selesai absen -- --}}
+<div style="padding: 14px 12px 0;">
+    <div class="done-card">
+        <div style="font-size:3rem; margin-bottom:8px;">??</div>
+        <div style="font-size:1.1rem; font-weight:800; margin-bottom:4px;">Presensi Hari Ini Selesai!</div>
+        <div style="font-size:.82rem; opacity:.9; margin-bottom:16px;">Kamu sudah absen masuk dan pulang hari ini.</div>
+        <div class="d-flex justify-content-center gap-4">
             <div>
-                <strong>Presensi Hari Ini Selesai</strong><br>
-                <small>Masuk: {{ $cek->jam_in }} &nbsp;|&nbsp; Pulang: {{ $cek->jam_out }}</small>
+                <div style="font-size:.68rem; opacity:.8;">Masuk</div>
+                <div style="font-size:1.1rem; font-weight:800;">{{ $cek->jam_in }}</div>
+            </div>
+            <div style="width:1px; background:rgba(255,255,255,.3);"></div>
+            <div>
+                <div style="font-size:.68rem; opacity:.8;">Pulang</div>
+                <div style="font-size:1.1rem; font-weight:800;">{{ $cek->jam_out }}</div>
             </div>
         </div>
+        <a href="{{ route('dashboard') }}" class="btn btn-light mt-4 w-100" style="border-radius:12px; font-weight:700;">
+            Kembali ke Dashboard
+        </a>
     </div>
-    @else
+</div>
+@else
 
-    <!-- Status loading model -->
-    <div id="modelStatus" class="status-card" style="background:#eff6ff; color:#1e40af;">
+{{-- -- Model loading status -- --}}
+<div style="padding: 10px 12px 0;">
+    <div id="modelStatus" style="background:#eff6ff; color:#1e40af;">
         <div class="d-flex align-items-center gap-2">
             <div class="spinner-border spinner-border-sm" role="status"></div>
-            <span>Memuat model AI... Harap tunggu.</span>
+            <span>Memuat model AI face recognition...</span>
         </div>
     </div>
+</div>
 
-    <!-- Kamera -->
-    <div id="videoContainer" class="mt-3">
-        <video id="videoEl" autoplay muted playsinline></video>
-        <canvas id="overlayCanvas"></canvas>
+{{-- -- Video kamera -- --}}
+<div id="videoWrap">
+    <video id="videoEl" autoplay muted playsinline></video>
+    <canvas id="overlayCanvas"></canvas>
+
+    {{-- Scan frame corners -- --}}
+    <div id="scanFrame">
+        <div class="sf-corner sf-tl"></div>
+        <div class="sf-corner sf-tr"></div>
+        <div class="sf-corner sf-bl"></div>
+        <div class="sf-corner sf-br"></div>
     </div>
 
-    <!-- Status deteksi -->
-    <div class="mt-2 text-center">
-        <span id="faceBadge" class="face-badge searching">
-            <ion-icon name="scan-outline"></ion-icon>
-            Memuat...
-        </span>
+    {{-- Status pill di atas video -- --}}
+    <div id="statusPill" style="background:rgba(0,0,0,.55); color:#fff;">
+        <ion-icon name="scan-outline" style="vertical-align:-2px; margin-right:4px;"></ion-icon>
+        Memuat...
     </div>
+</div>
 
-    <!-- Info siswa yang dikenali -->
-    <div id="matchInfo" style="display:none;" class="status-card mt-2" style="background:#eff6ff;">
+{{-- -- Match Card (muncul saat wajah dikenali) -- --}}
+<div style="padding: 12px 12px 0;">
+    <div id="matchCard">
         <div class="d-flex align-items-center gap-3">
-            <img id="matchPhoto" src="" width="48" height="48"
-                 style="border-radius:50%; object-fit:cover; border:2px solid #3b82f6;">
-            <div>
-                <div id="matchName" class="fw-bold" style="font-size:0.95rem;"></div>
-                <div id="matchKelas" class="text-muted" style="font-size:0.8rem;"></div>
-                <div class="confidence-bar mt-1" style="width:120px;">
-                    <div id="confidenceFill" class="confidence-fill" style="background:#3b82f6; width:0%;"></div>
-                </div>
-                <div id="confidenceText" style="font-size:0.75rem; color:#6b7280;"></div>
+            {{-- Foto profil siswa -- --}}
+            <div class="match-avatar-wrap">
+                <img id="matchPhoto"
+                     src="{{ $fotoSiswa }}"
+                     alt="Foto Siswa"
+                     onerror="this.src='{{ asset('assets/img/kosong.jpg') }}'">
+                <div class="verified-badge">?</div>
             </div>
+            {{-- Info siswa -- --}}
+            <div style="flex:1; min-width:0;">
+                <div id="matchName" style="font-size:1rem; font-weight:800; color:#1a1a1a;
+                     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+                <div id="matchKelas" style="font-size:.78rem; color:#6c757d; margin-top:1px;"></div>
+                <div id="matchJurusan" style="font-size:.72rem; color:#aaa;"></div>
+                {{-- Confidence bar -- --}}
+                <div class="conf-bar-wrap">
+                    <div id="confFill" class="conf-bar-fill" style="width:0%; background:#2fb344;"></div>
+                </div>
+                <div id="confText" style="font-size:.7rem; color:#6c757d; margin-top:3px;"></div>
+            </div>
+            {{-- Status icon -- --}}
+            <div id="matchStatusIcon" style="font-size:2rem; flex-shrink:0;"></div>
         </div>
     </div>
+</div>
 
-    <!-- Tombol absen -->
-    <div class="mt-3">
-        @if ($cek)
-            <button id="btnAbsen" class="btn btn-danger btn-block" disabled>
-                <ion-icon name="log-out-outline"></ion-icon> Absen Pulang
-            </button>
-        @else
-            <button id="btnAbsen" class="btn btn-primary btn-block" disabled>
-                <ion-icon name="log-in-outline"></ion-icon> Absen Masuk
-            </button>
-        @endif
-    </div>
-
-    <!-- Peta lokasi -->
-    <div class="mt-3">
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <div id="map" style="height:200px; border-radius:12px;"></div>
-    </div>
-
+{{-- -- Tombol Absen -- --}}
+<div style="padding: 12px 12px 0;">
+    @if ($cek)
+        <button id="btnAbsen" class="btn btn-danger btn-block w-100" disabled>
+            <ion-icon name="log-out-outline" style="vertical-align:-2px; margin-right:6px;"></ion-icon>
+            Absen Pulang
+        </button>
+    @else
+        <button id="btnAbsen" class="btn btn-primary btn-block w-100" disabled>
+            <ion-icon name="log-in-outline" style="vertical-align:-2px; margin-right:6px;"></ion-icon>
+            Absen Masuk
+        </button>
     @endif
+</div>
+
+{{-- -- Peta GPS -- --}}
+<div style="padding: 12px 12px 0;">
+    <div style="font-size:.72rem; font-weight:600; color:#888; text-transform:uppercase;
+         letter-spacing:.5px; margin-bottom:6px;">
+        <ion-icon name="location-outline" style="vertical-align:-2px;"></ion-icon> Lokasi Kamu
+    </div>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div id="map"></div>
+    <div id="gpsStatus" style="font-size:.72rem; color:#6c757d; margin-top:5px; text-align:center;">
+        <span class="spinner-border spinner-border-sm me-1" style="width:.7rem;height:.7rem;"></span>
+        Mendapatkan lokasi GPS...
+    </div>
+</div>
+
+@endif
 </div>
 
 <input type="hidden" id="lokasiInput">
@@ -168,60 +279,61 @@
 
 @push('myscripts')
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-
 <script>
-const MODEL_URL    = "{{ asset('face-models') }}";
-const STORE_URL    = "{{ route('presensi.face.store') }}";
-const DESC_URL     = "{{ route('face.descriptors') }}";
-const CSRF_TOKEN   = "{{ csrf_token() }}";
-const HAS_FACE     = {{ $hasFace ? 'true' : 'false' }};
-const ALREADY_DONE = {{ ($cek && !empty($cek->jam_out)) ? 'true' : 'false' }};
+const MODEL_URL  = "{{ asset('face-models') }}";
+const STORE_URL  = "{{ route('presensi.face.store') }}";
+const DESC_URL   = "{{ route('face.descriptors') }}";
+const CSRF_TOKEN = "{{ csrf_token() }}";
+const IS_DONE    = {{ ($cek && !empty($cek->jam_out)) ? 'true' : 'false' }};
+const IS_ABSEN   = {{ $cek ? 'true' : 'false' }};
 
-if (ALREADY_DONE) {
-    // Tidak perlu inisialisasi apapun
-} else {
+if (!IS_DONE) {
     let videoEl, overlayCanvas, overlayCtx;
     let detectionInterval = null;
-    let knownDescriptors  = []; // [{nisn, nama_lengkap, kelas, foto, descriptor: Float32Array}]
-    let currentMatch      = null; // {nisn, nama_lengkap, kelas, foto, distance}
+    let knownDescriptors  = [];
+    let currentMatch      = null;
     let lokasi            = '';
+    let mapInstance       = null;
 
-    // ─── GPS ────────────────────────────────────────────────────────────────
+    // -- GPS ------------------------------------------------------------------
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             pos => {
                 lokasi = pos.coords.latitude + ',' + pos.coords.longitude;
                 document.getElementById('lokasiInput').value = lokasi;
+                document.getElementById('gpsStatus').innerHTML =
+                    '<ion-icon name="checkmark-circle-outline" style="color:#34a853;vertical-align:-2px;"></ion-icon> ' +
+                    'GPS aktif &bull; ' + pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5);
 
-                // Tampilkan peta
-                const map = L.map('map').setView([pos.coords.latitude, pos.coords.longitude], 16);
+                mapInstance = L.map('map').setView([pos.coords.latitude, pos.coords.longitude], 16);
                 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '© OpenStreetMap'
-                }).addTo(map);
-                L.marker([pos.coords.latitude, pos.coords.longitude]).addTo(map);
+                    maxZoom: 19, attribution: '� OpenStreetMap'
+                }).addTo(mapInstance);
+                L.marker([pos.coords.latitude, pos.coords.longitude])
+                    .addTo(mapInstance)
+                    .bindPopup('Lokasi kamu').openPopup();
                 L.circle([-7.671325, 110.589607], {
-                    color: 'green', fillColor: 'green', fillOpacity: 0.2, radius: 200
-                }).addTo(map);
+                    color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.12, radius: 200
+                }).addTo(mapInstance).bindPopup('Area Sekolah');
             },
             err => {
-                swal('GPS Error', 'Gagal mendapatkan lokasi: ' + err.message, 'warning');
+                document.getElementById('gpsStatus').innerHTML =
+                    '<ion-icon name="warning-outline" style="color:#ea4335;vertical-align:-2px;"></ion-icon> ' +
+                    'GPS gagal: ' + err.message;
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            { enableHighAccuracy: true, timeout: 12000 }
         );
     }
 
-    // ─── Load Models & Descriptors ──────────────────────────────────────────
+    // -- Load Models & Descriptors ---------------------------------------------
     async function init() {
         try {
-            // Load model AI
             await Promise.all([
                 faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
                 faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                 faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
             ]);
 
-            // Ambil descriptor dari server
             const resp = await fetch(DESC_URL);
             const json = await resp.json();
 
@@ -230,29 +342,40 @@ if (ALREADY_DONE) {
                     nisn:         s.nisn,
                     nama_lengkap: s.nama_lengkap,
                     kelas:        s.kelas,
-                    foto:         s.foto,
+                    foto:         s.foto,   // URL foto profil dari storage
                     descriptor:   new Float32Array(s.face_descriptor),
                 }));
             }
 
             const count = knownDescriptors.length;
-            document.getElementById('modelStatus').innerHTML =
-                `<div class="d-flex align-items-center gap-2" style="color:#065f46;">
-                    <ion-icon name="checkmark-circle-outline" style="font-size:1.2rem;"></ion-icon>
-                    <span>Model siap &bull; ${count} wajah terdaftar</span>
-                </div>`;
-            document.getElementById('modelStatus').style.background = '#d1fae5';
+            const ms = document.getElementById('modelStatus');
+
+            // Cek apakah wajah siswa yang login ada di daftar
+            const NISN_LOGIN = "{{ Auth::guard('siswa')->user()->nisn }}";
+            const myFace = knownDescriptors.find(d => d.nisn === NISN_LOGIN);
+
+            if (myFace) {
+                ms.innerHTML = '<div class="d-flex align-items-center gap-2" style="color:#065f46;">' +
+                    '<ion-icon name="checkmark-circle-outline" style="font-size:1.1rem;"></ion-icon>' +
+                    '<span>Sistem siap &bull; Wajah kamu <strong>sudah terdaftar</strong></span></div>';
+                ms.style.background = '#d1fae5';
+            } else {
+                ms.innerHTML = '<div class="d-flex align-items-center gap-2" style="color:#92400e;">' +
+                    '<ion-icon name="warning-outline" style="font-size:1.1rem;"></ion-icon>' +
+                    '<span>Wajah kamu <strong>belum terdaftar</strong> di sistem</span></div>';
+                ms.style.background = '#fef3c7';
+            }
 
             startCamera();
         } catch (err) {
-            document.getElementById('modelStatus').innerHTML =
-                `<strong>Gagal memuat model AI.</strong><br><small>${err.message}</small>`;
-            document.getElementById('modelStatus').style.background = '#fee2e2';
-            document.getElementById('modelStatus').style.color = '#991b1b';
+            const ms = document.getElementById('modelStatus');
+            ms.innerHTML = '<strong>Gagal memuat model AI.</strong><br><small>' + err.message + '</small>';
+            ms.style.background = '#fee2e2';
+            ms.style.color = '#991b1b';
         }
     }
 
-    // ─── Kamera ─────────────────────────────────────────────────────────────
+    // -- Kamera ---------------------------------------------------------------
     async function startCamera() {
         videoEl       = document.getElementById('videoEl');
         overlayCanvas = document.getElementById('overlayCanvas');
@@ -260,7 +383,7 @@ if (ALREADY_DONE) {
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 480, height: 360, facingMode: 'user' }
+                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
             });
             videoEl.srcObject = stream;
             videoEl.onloadedmetadata = () => {
@@ -273,7 +396,7 @@ if (ALREADY_DONE) {
         }
     }
 
-    // ─── Deteksi & Pencocokan ────────────────────────────────────────────────
+    // -- Euclidean distance ----------------------------------------------------
     function euclideanDistance(a, b) {
         let sum = 0;
         for (let i = 0; i < a.length; i++) sum += (a[i] - b[i]) ** 2;
@@ -281,106 +404,160 @@ if (ALREADY_DONE) {
     }
 
     function findBestMatch(descriptor) {
-        if (knownDescriptors.length === 0) return null;
+        if (!knownDescriptors.length) return null;
         let best = null, bestDist = Infinity;
-        for (const known of knownDescriptors) {
-            const dist = euclideanDistance(descriptor, known.descriptor);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = { ...known, distance: dist };
-            }
+        for (const k of knownDescriptors) {
+            const d = euclideanDistance(descriptor, k.descriptor);
+            if (d < bestDist) { bestDist = d; best = { ...k, distance: d }; }
         }
         return best;
     }
 
+    // -- Deteksi ---------------------------------------------------------------
+    function setStatusPill(text, bg, color) {
+        const p = document.getElementById('statusPill');
+        p.style.background = bg;
+        p.style.color = color;
+        p.innerHTML = text;
+    }
+
     function startDetection() {
-        const badge = document.getElementById('faceBadge');
-        badge.className = 'face-badge searching';
-        badge.innerHTML = '<ion-icon name="scan-outline"></ion-icon> Mendeteksi wajah...';
+        setStatusPill(
+            '<ion-icon name="scan-outline" style="vertical-align:-2px;margin-right:4px;"></ion-icon> Mendeteksi wajah...',
+            'rgba(0,0,0,.55)', '#fff'
+        );
 
         detectionInterval = setInterval(async () => {
             if (!videoEl || videoEl.readyState < 2) return;
 
-            const detection = await faceapi
+            const det = await faceapi
                 .detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
                 .withFaceLandmarks()
                 .withFaceDescriptor();
 
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-            if (!detection) {
-                badge.className = 'face-badge searching';
-                badge.innerHTML = '<ion-icon name="scan-outline"></ion-icon> Arahkan wajah ke kamera';
-                document.getElementById('matchInfo').style.display = 'none';
+            if (!det) {
+                setStatusPill(
+                    '<ion-icon name="scan-outline" style="vertical-align:-2px;margin-right:4px;"></ion-icon> Arahkan wajah ke kamera',
+                    'rgba(0,0,0,.55)', '#fff'
+                );
+                hideMatchCard();
                 document.getElementById('btnAbsen').disabled = true;
+                document.getElementById('scanFrame').className = '';
                 currentMatch = null;
                 return;
             }
 
-            const box    = detection.detection.box;
+            const box    = det.detection.box;
             const scaleX = overlayCanvas.width  / videoEl.videoWidth;
             const scaleY = overlayCanvas.height / videoEl.videoHeight;
-            const desc   = Array.from(detection.descriptor);
+            const desc   = Array.from(det.descriptor);
             const match  = findBestMatch(desc);
+            const THRESH = 0.55;
+            const isMatch = match && match.distance < THRESH;
 
-            // Threshold: < 0.55 = cocok
-            const THRESHOLD = 0.55;
-            const isMatch   = match && match.distance < THRESHOLD;
+            // Gambar kotak deteksi
+            const bx = box.x * scaleX, by = box.y * scaleY;
+            const bw = box.width * scaleX, bh = box.height * scaleY;
 
-            // Warna kotak
             overlayCtx.strokeStyle = isMatch ? '#2fb344' : '#f59e0b';
             overlayCtx.lineWidth   = 3;
-            overlayCtx.strokeRect(
-                box.x * scaleX, box.y * scaleY,
-                box.width * scaleX, box.height * scaleY
-            );
+            overlayCtx.strokeRect(bx, by, bw, bh);
+
+            // Corner accent
+            const cs = 18;
+            overlayCtx.lineWidth = 4;
+            [[bx,by],[bx+bw,by],[bx,by+bh],[bx+bw,by+bh]].forEach(([cx,cy], i) => {
+                overlayCtx.beginPath();
+                if (i===0) { overlayCtx.moveTo(cx+cs,cy); overlayCtx.lineTo(cx,cy); overlayCtx.lineTo(cx,cy+cs); }
+                if (i===1) { overlayCtx.moveTo(cx-cs,cy); overlayCtx.lineTo(cx,cy); overlayCtx.lineTo(cx,cy+cs); }
+                if (i===2) { overlayCtx.moveTo(cx+cs,cy); overlayCtx.lineTo(cx,cy); overlayCtx.lineTo(cx,cy-cs); }
+                if (i===3) { overlayCtx.moveTo(cx-cs,cy); overlayCtx.lineTo(cx,cy); overlayCtx.lineTo(cx,cy-cs); }
+                overlayCtx.strokeStyle = isMatch ? '#2fb344' : '#f59e0b';
+                overlayCtx.stroke();
+            });
 
             if (isMatch) {
                 currentMatch = { ...match, descriptor: desc };
 
-                // Badge
-                badge.className = 'face-badge matched';
-                badge.innerHTML = '<ion-icon name="person-circle-outline"></ion-icon> Wajah Dikenali';
+                // Confidence 0-100 (jarak 0=100%, jarak 0.55=0%)
+                const conf = Math.round(Math.max(0, (1 - match.distance / THRESH)) * 100);
 
-                // Info match
-                const confidence = Math.max(0, Math.min(100, Math.round((1 - match.distance / 1.0) * 100)));
-                document.getElementById('matchInfo').style.display = 'block';
-                document.getElementById('matchName').textContent   = match.nama_lengkap;
-                document.getElementById('matchKelas').textContent  = 'Kelas ' + match.kelas;
-                document.getElementById('confidenceText').textContent = `Kecocokan: ${confidence}%`;
-                document.getElementById('confidenceFill').style.width = confidence + '%';
-                document.getElementById('confidenceFill').style.background = confidence > 70 ? '#2fb344' : '#f59e0b';
+                setStatusPill(
+                    '<ion-icon name="checkmark-circle-outline" style="vertical-align:-2px;margin-right:4px;"></ion-icon> Wajah Dikenali!',
+                    'rgba(47,179,68,.9)', '#fff'
+                );
+                document.getElementById('scanFrame').className = 'matched';
 
-                if (match.foto) {
-                    document.getElementById('matchPhoto').src = match.foto;
-                }
-
-                // Label di canvas
-                overlayCtx.fillStyle = '#2fb344';
-                overlayCtx.fillRect(box.x * scaleX, (box.y * scaleY) - 26, 180, 26);
-                overlayCtx.fillStyle = '#fff';
-                overlayCtx.font = '13px sans-serif';
-                overlayCtx.fillText('✓ ' + match.nama_lengkap, (box.x * scaleX) + 6, (box.y * scaleY) - 8);
-
+                // Tampilkan match card dengan foto profil siswa
+                showMatchCard(match, conf);
                 document.getElementById('btnAbsen').disabled = false;
+
+                // Label nama di canvas
+                overlayCtx.fillStyle = 'rgba(47,179,68,.85)';
+                const labelW = Math.min(bw, 200);
+                overlayCtx.fillRect(bx, by - 28, labelW, 26);
+                overlayCtx.fillStyle = '#fff';
+                overlayCtx.font = 'bold 13px Inter, sans-serif';
+                overlayCtx.fillText('? ' + match.nama_lengkap, bx + 6, by - 9);
+
             } else {
                 currentMatch = null;
-                badge.className = 'face-badge no-face';
-                badge.innerHTML = '<ion-icon name="close-circle-outline"></ion-icon> Wajah Tidak Dikenali';
-                document.getElementById('matchInfo').style.display = 'none';
+                setStatusPill(
+                    '<ion-icon name="close-circle-outline" style="vertical-align:-2px;margin-right:4px;"></ion-icon> Wajah Tidak Dikenali',
+                    'rgba(234,67,53,.85)', '#fff'
+                );
+                document.getElementById('scanFrame').className = '';
+                hideMatchCard();
                 document.getElementById('btnAbsen').disabled = true;
 
                 // Label di canvas
-                overlayCtx.fillStyle = '#f59e0b';
-                overlayCtx.fillRect(box.x * scaleX, (box.y * scaleY) - 26, 160, 26);
+                overlayCtx.fillStyle = 'rgba(245,158,11,.85)';
+                overlayCtx.fillRect(bx, by - 28, 150, 26);
                 overlayCtx.fillStyle = '#fff';
-                overlayCtx.font = '13px sans-serif';
-                overlayCtx.fillText('? Tidak Dikenali', (box.x * scaleX) + 6, (box.y * scaleY) - 8);
+                overlayCtx.font = 'bold 13px Inter, sans-serif';
+                overlayCtx.fillText('? Tidak Dikenali', bx + 6, by - 9);
             }
         }, 400);
     }
 
-    // ─── Tombol Absen ────────────────────────────────────────────────────────
+    // -- Match Card helpers ----------------------------------------------------
+    function showMatchCard(match, conf) {
+        const card = document.getElementById('matchCard');
+        card.style.display = 'block';
+
+        document.getElementById('matchName').textContent  = match.nama_lengkap;
+        document.getElementById('matchKelas').textContent = 'Kelas ' + match.kelas;
+
+        // Set foto profil siswa yang dikenali
+        // match.foto = absolute URL dari url('storage/uploads/foto_siswa/...') di controller
+        const photoEl = document.getElementById('matchPhoto');
+        if (match.foto && match.foto !== '' && match.foto !== 'null' && match.foto !== null) {
+            photoEl.src = match.foto;
+        } else {
+            // Tidak ada foto profil ? pakai foto default siswa yang login
+            photoEl.src = "{{ $fotoSiswa }}";
+        }
+
+        // Confidence bar
+        const fill = document.getElementById('confFill');
+        fill.style.width = conf + '%';
+        fill.style.background = conf >= 70 ? '#2fb344' : conf >= 50 ? '#f9a825' : '#ea4335';
+
+        document.getElementById('confText').textContent = 'Kecocokan: ' + conf + '%';
+        document.getElementById('matchStatusIcon').textContent = conf >= 70 ? '?' : '??';
+
+        // Border warna sesuai confidence
+        document.querySelector('.match-avatar-wrap img').style.borderColor =
+            conf >= 70 ? '#2fb344' : '#f9a825';
+    }
+
+    function hideMatchCard() {
+        document.getElementById('matchCard').style.display = 'none';
+    }
+
+    // -- Tombol Absen ---------------------------------------------------------
     document.getElementById('btnAbsen').addEventListener('click', async () => {
         if (!currentMatch) {
             swal('Perhatian', 'Wajah belum dikenali!', 'warning');
@@ -393,29 +570,26 @@ if (ALREADY_DONE) {
 
         clearInterval(detectionInterval);
 
-        // Ambil snapshot
-        const snapCanvas = document.createElement('canvas');
-        snapCanvas.width  = videoEl.videoWidth;
-        snapCanvas.height = videoEl.videoHeight;
-        snapCanvas.getContext('2d').drawImage(videoEl, 0, 0);
-        const imageData = snapCanvas.toDataURL('image/jpeg', 0.85);
+        // Snapshot kamera
+        const snap = document.createElement('canvas');
+        snap.width  = videoEl.videoWidth;
+        snap.height = videoEl.videoHeight;
+        snap.getContext('2d').drawImage(videoEl, 0, 0);
+        const imageData = snap.toDataURL('image/jpeg', 0.85);
 
         const btn = document.getElementById('btnAbsen');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Memproses...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Memproses...';
 
         try {
             const response = await fetch(STORE_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': CSRF_TOKEN,
-                },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
                 body: JSON.stringify({
-                    nisn_match:  currentMatch.nisn,
-                    confidence:  currentMatch.distance,
-                    lokasi:      lokasi,
-                    image:       imageData,
+                    nisn_match: currentMatch.nisn,
+                    confidence: currentMatch.distance,
+                    lokasi:     lokasi,
+                    image:      imageData,
                 }),
             });
 
@@ -427,9 +601,9 @@ if (ALREADY_DONE) {
             } else {
                 swal('GAGAL!', result.message || 'Absensi gagal!', 'error');
                 btn.disabled = false;
-                btn.innerHTML = result.type === 'out'
-                    ? '<ion-icon name="log-out-outline"></ion-icon> Absen Pulang'
-                    : '<ion-icon name="log-in-outline"></ion-icon> Absen Masuk';
+                btn.innerHTML = IS_ABSEN
+                    ? '<ion-icon name="log-out-outline" style="vertical-align:-2px;margin-right:6px;"></ion-icon> Absen Pulang'
+                    : '<ion-icon name="log-in-outline" style="vertical-align:-2px;margin-right:6px;"></ion-icon> Absen Masuk';
                 startDetection();
             }
         } catch (err) {
@@ -439,8 +613,20 @@ if (ALREADY_DONE) {
         }
     });
 
-    // Mulai
     init();
 }
+
+// -- Jam di header ----------------------------------------------------------
+(function tickClock() {
+    var el = document.getElementById('jamHeader');
+    if (el) {
+        var now = new Date();
+        var h = String(now.getHours()).padStart(2,'0');
+        var m = String(now.getMinutes()).padStart(2,'0');
+        var s = String(now.getSeconds()).padStart(2,'0');
+        el.textContent = h + ':' + m + ':' + s;
+    }
+    setTimeout(tickClock, 1000);
+})();
 </script>
 @endpush

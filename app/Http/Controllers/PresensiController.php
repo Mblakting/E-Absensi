@@ -6,385 +6,422 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash; 
-use Illuminate\Support\Facades\Redirect; 
-use Illuminate\Support\Facades\Log; // Tambahkan untuk logging
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use App\Traits\HasversineDistance;
 
 class PresensiController extends Controller
 {
+    use HasversineDistance;
+
+    /**
+     * Halaman form absensi siswa.
+     */
     public function create()
     {
-        $hariini = date('Y-m-d');
-        // ... (lanjutan kode create)
-        $nisn = Auth::guard('siswa')->user()->nisn;
-        $cek = \DB::table('presensi')
+        $nisn    = Auth::guard('siswa')->id();
+        $hariini = now()->toDateString();
+
+        $cek = DB::table('presensi')
             ->where('nisn', $nisn)
             ->where('tgl_presensi', $hariini)
             ->count();
+
         return view('presensi.create', compact('cek'));
     }
 
+    /**
+     * Proses simpan absensi (masuk / pulang) via GPS + foto.
+     */
     public function store(Request $request)
     {
-        $nisn = Auth::guard('siswa')->user()->nisn;
-        $tgl_presensi = date('Y-m-d');
-        $jam = date('H:i:s');
+        $nisn         = Auth::guard('siswa')->id();
+        $tglPresensi  = now()->toDateString();
+        $jam          = now()->format('H:i:s');
 
-        // Data Lokasi & Gambar
-        $latitudesekolah  = -7.671325;
-        $longitudesekolah = 110.589607;
-        $lokasi = $request->lokasi;
-        $image  = $request->image; // base64 data URI dari WebcamJS
+        $lokasi = $request->input('lokasi');
+        $image  = $request->input('image');
 
-        // Validasi input wajib
         if (!$lokasi || !$image) {
-            return response()->json(['status' => 'gagal', 'message' => 'Data tidak lengkap (lokasi atau gambar hilang)'], 422);
-        }
-
-        // Hitung jarak ke sekolah
-        $lokasiuser   = explode(',', $lokasi);
-        $latitudeuser  = trim($lokasiuser[0]);
-        $longitudeuser = trim($lokasiuser[1]);
-        $jarak  = $this->distance($latitudesekolah, $longitudesekolah, $latitudeuser, $longitudeuser);
-        $radius = round($jarak['meters']);
-
-        // Validasi radius (20 km untuk development, ubah ke 200 untuk production)
-        if ($radius > 20000) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Anda berada di luar area sekolah ' . $radius . ' meter!',
-                'type'    => 'out'
-            ]);
+                'status'  => 'gagal',
+                'message' => 'Data tidak lengkap (lokasi atau gambar hilang).',
+            ], 422);
         }
 
-        // Cek apakah sudah absen masuk hari ini
+        // Validasi koordinat & radius sekolah
+        $lokasiCheck = $this->validateSchoolRadius($lokasi);
+        if (!$lokasiCheck['valid']) {
+            $statusCode = isset($lokasiCheck['type']) ? 200 : 422;
+            return response()->json([
+                'status'  => isset($lokasiCheck['type']) ? 'error' : 'gagal',
+                'message' => $lokasiCheck['message'],
+                'type'    => $lokasiCheck['type'] ?? null,
+            ], $statusCode);
+        }
+
+        // Cek status absensi hari ini
         $cek = DB::table('presensi')
             ->where('nisn', $nisn)
-            ->where('tgl_presensi', $tgl_presensi)
+            ->where('tgl_presensi', $tglPresensi)
             ->first();
+
+        if ($cek && !empty($cek->jam_out)) {
+            return response()->json([
+                'status'  => 'gagal',
+                'message' => 'Anda sudah melakukan presensi masuk dan pulang hari ini.',
+            ], 409);
+        }
 
         $ket = $cek ? 'out' : 'in';
 
         // Proses simpan gambar
-        // WebcamJS menghasilkan: "data:image/jpeg;base64,/9j/4AAQ..."
-        $image_parts = explode(';base64,', $image);
-        if (count($image_parts) !== 2) {
-            return response()->json(['status' => 'gagal', 'message' => 'Format gambar tidak valid'], 400);
+        $imageParts = explode(';base64,', $image);
+        if (count($imageParts) !== 2) {
+            return response()->json(['status' => 'gagal', 'message' => 'Format gambar tidak valid.'], 400);
         }
 
-        $image_base64 = base64_decode($image_parts[1]);
-        if ($image_base64 === false) {
-            return response()->json(['status' => 'gagal', 'message' => 'Gagal decode gambar'], 400);
+        $imageData = base64_decode($imageParts[1]);
+        if ($imageData === false) {
+            return response()->json(['status' => 'gagal', 'message' => 'Gagal decode gambar.'], 400);
         }
 
-        $formatName = $nisn . '-' . $tgl_presensi . '-' . $ket;
-        $fileName   = $formatName . '.jpg'; // WebcamJS image_format: jpeg
-        $filePath   = 'uploads/absensi/' . $fileName; // path relatif di disk public
+        $fileName = $nisn . '-' . $tglPresensi . '-' . $ket . '.jpg';
+        $filePath = 'uploads/absensi/' . $fileName;
 
-        // Pastikan folder ada
         Storage::disk('public')->makeDirectory('uploads/absensi');
 
-        // Simpan gambar ke storage/app/public/uploads/absensi/
-        $saved = Storage::disk('public')->put($filePath, $image_base64);
-
-        if (!$saved) {
-            Log::error("Gagal simpan foto absensi: $filePath");
-            return response()->json(['status' => 'gagal', 'message' => 'Gagal menyimpan foto'], 500);
+        if (!Storage::disk('public')->put($filePath, $imageData)) {
+            Log::error("Gagal simpan foto absensi: {$filePath}");
+            return response()->json(['status' => 'gagal', 'message' => 'Gagal menyimpan foto.'], 500);
         }
 
-        // Logika presensi masuk / pulang
         if ($cek) {
-            // Sudah absen masuk — proses absen pulang
-            if (!empty($cek->jam_out)) {
-                return response()->json(['status' => 'gagal', 'message' => 'Anda sudah melakukan presensi masuk dan pulang hari ini'], 409);
-            }
-
+            // Absen pulang
             DB::table('presensi')
-                ->where('tgl_presensi', $tgl_presensi)
                 ->where('nisn', $nisn)
+                ->where('tgl_presensi', $tglPresensi)
                 ->update([
                     'jam_out'    => $jam,
                     'foto_out'   => $fileName,
                     'lokasi_out' => $lokasi,
+                    'updated_at' => now(),
                 ]);
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'Hati-Hati Di Jalan!',
-                'type'    => 'out'
-            ]);
-
-        } else {
-            // Belum absen masuk — proses absen masuk
-            DB::table('presensi')->insert([
-                'nisn'         => $nisn,
-                'tgl_presensi' => $tgl_presensi,
-                'jam_in'       => $jam,
-                'foto_in'      => $fileName,
-                'lokasi_in'    => $lokasi,
-            ]);
-
-            return response()->json([
-                'status'  => 'success',
-                'message' => 'Selamat Belajar!',
-                'type'    => 'in'
+                'message' => 'Absen Pulang Berhasil! Hati-Hati Di Jalan 👋',
+                'type'    => 'out',
             ]);
         }
+
+        // Absen masuk
+        DB::table('presensi')->insert([
+            'nisn'         => $nisn,
+            'tgl_presensi' => $tglPresensi,
+            'jam_in'       => $jam,
+            'foto_in'      => $fileName,
+            'lokasi_in'    => $lokasi,
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Absen Masuk Berhasil! Selamat Belajar 🎉',
+            'type'    => 'in',
+        ]);
     }
 
-    // Fungsi untuk menghitung jarak antara dua koordinat (latitude dan longitude) dalam meter
-    function distance($lat1, $lon1, $lat2, $lon2) {
-        // ... (fungsi distance() Anda sudah benar)
-        $theta = $lon1 - $lon2;
-        $miles = (sin(deg2rad($lat1)) * sin(deg2rad($lat2)) +  cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * cos(deg2rad($theta)));
-        $miles = acos($miles);
-        $miles = rad2deg($miles);
-        $miles = $miles * 60 * 1.1515;
-        $feet = $miles * 5280;
-        $yards = $feet / 3;
-        $kilometers = $miles * 1.609344;
-        $meters = $kilometers * 1000;
-        return compact('meters');     
-    }
-
+    /**
+     * Halaman edit profil siswa.
+     */
     public function editprofile()
     {
-        $nisn = Auth::guard('siswa')->user()->nisn;
+        $nisn  = Auth::guard('siswa')->id();
         $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
+
         return view('presensi.editprofile', compact('siswa'));
-    } 
-    
-    public function updateprofile(Request $request)
-    {
-        $nisn = Auth::guard('siswa')->user()->nisn;
-        $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
-        
-        $data = [
-            'nama_lengkap' => $request->input('nama_lengkap'),
-            'no_hp' => $request->input('no_hp'),
-        ];
-        
-        $passwordChanged = false;
-        
-        // 1. Logika Update Password
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
-            $passwordChanged = true;
-        }
-        
-        $foto_lama = $siswa->foto;
-        $foto_baru = $foto_lama;
-
-        // 2. Logika File Upload
-        if ($request->hasFile('foto')) {
-            $foto_baru = $nisn.".".$request->file('foto')->getClientOriginalExtension();
-            $data['foto'] = $foto_baru;
-        } else {
-            $data['foto'] = $foto_lama; 
-        }
-
-        // 3. Eksekusi Update
-        $update = DB::table('siswa')->where('nisn', $nisn)->update($data);
-
-        // 4. Logika Penyimpanan Foto dan Redirect
-        if ($update || $request->hasFile('foto')) {
-            // Cek apakah ada file foto yang di-upload
-            if($request->hasFile('foto')) {
-                // Hapus foto lama hanya jika berhasil mengupload foto baru
-                if ($foto_lama && $foto_lama !== 'default.jpg') { // Asumsi 'default.jpg' adalah nama file default
-                     Storage::disk('public')->delete('uploads/foto_siswa/' . $foto_lama);
-                }
-
-                // Tentukan folder penyimpanan di dalam disk 'public'
-                $folderPath = 'uploads/foto_siswa';
-
-                // Simpan foto baru ke dalam storage/app/public/uploads/foto_siswa
-                $request->file('foto')->storeAs($folderPath, $foto_baru, 'public');
-                
-            }
-            
-            return redirect()->back()->with('success', 'Berhasil mengupdate data profile.'); 
-            
-        } else {
-            // Jika $update mengembalikan 0 (berarti data teks sama dengan sebelumnya) DAN tidak ada foto baru di-upload
-            return redirect()->back()->with('warning', 'Tidak ada data yang diubah.');
-        }
-
-        // Fallback error (seharusnya tidak tercapai)
-        return redirect()->back()->with('error', 'Gagal mengupdate data profile.');
     }
 
+    /**
+     * Proses update profil siswa.
+     */
+    public function updateprofile(Request $request)
+    {
+        $nisn  = Auth::guard('siswa')->id();
+        $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
+
+        $request->validate([
+            'nama_lengkap' => 'required|string|max:100',
+            'no_hp'        => 'nullable|string|max:15',
+            'password'     => 'nullable|string|min:5|confirmed',
+            'foto'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+
+        $data = [
+            'nama_lengkap' => $request->nama_lengkap,
+            'no_hp'        => $request->no_hp,
+            'updated_at'   => now(),
+        ];
+
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $fotoLama = $siswa->foto;
+        $fotoBaru = $fotoLama;
+
+        if ($request->hasFile('foto')) {
+            $fotoBaru     = $nisn . '.' . $request->file('foto')->getClientOriginalExtension();
+            $data['foto'] = $fotoBaru;
+
+            // Upload foto baru dulu
+            if (!empty($fotoLama)) {
+                Storage::disk('public')->delete('uploads/foto_siswa/' . $fotoLama);
+            }
+            $request->file('foto')->storeAs('uploads/foto_siswa', $fotoBaru, 'public');
+        }
+
+        DB::table('siswa')->where('nisn', $nisn)->update($data);
+
+        return redirect()->back()->with('success', 'Profil berhasil diupdate.');
+    }
+
+    /**
+     * Halaman histori presensi siswa.
+     */
     public function histori()
     {
-        $namabulan = ["","Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+        $namabulan = [
+            '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+        ];
+
         return view('presensi.histori', compact('namabulan'));
     }
 
+    /**
+     * Ambil data histori presensi berdasarkan bulan & tahun (AJAX).
+     */
     public function gethistori(Request $request)
     {
-        $nisn = Auth::guard('siswa')->user()->nisn;
-        $bulan = intval($request->input('bulan'));
-        $tahun = intval($request->input('tahun'));
+        $nisn  = Auth::guard('siswa')->id();
+        $bulan = (int) $request->input('bulan');
+        $tahun = (int) $request->input('tahun');
 
         $histori = DB::table('presensi')
-            ->when($bulan, function ($query, $bulan) {
-                return $query->whereMonth('tgl_presensi', $bulan);
-            })
-            ->when($tahun, function ($query, $tahun) {
-                return $query->whereYear('tgl_presensi', $tahun);
-            })
             ->where('nisn', $nisn)
+            ->when($bulan, fn ($q) => $q->whereMonth('tgl_presensi', $bulan))
+            ->when($tahun, fn ($q) => $q->whereYear('tgl_presensi', $tahun))
             ->orderBy('tgl_presensi', 'desc')
             ->get();
 
         return view('presensi.gethistori', compact('histori'));
     }
 
+    /**
+     * Halaman daftar pengajuan izin siswa.
+     */
     public function izin()
     {
         $dataizin = DB::table('pengajuan_izin')
-            ->where('nisn', Auth::guard('siswa')->user()->nisn)
-            ->orderBy('tgl_izin')
+            ->where('nisn', Auth::guard('siswa')->id())
+            ->orderBy('tgl_izin', 'desc')
             ->get();
+
         return view('presensi.izin', compact('dataizin'));
     }
-    
+
+    /**
+     * Halaman form buat izin.
+     */
     public function buatizin()
     {
         return view('presensi.buatizin');
     }
 
+    /**
+     * Proses simpan pengajuan izin/sakit.
+     */
     public function storeizin(Request $request)
     {
-        $nisn = Auth::guard('siswa')->user()->nisn;
-        $tgl_izin = $request->input('tgl_izin');
-        $status = $request->input('status');
-        $alasan = $request->input('keterangan');
+        $request->validate([
+            'tgl_izin'   => 'required|date',
+            'status'     => 'required|in:i,s',
+            'keterangan' => 'required|string|max:500',
+        ]);
 
-        // Validasi input dasar
-        if (!$tgl_izin || !$status || !$alasan) {
-            return response()->json(['status' => 'error', 'message' => 'Semua form harus diisi!'], 400);
-        }
+        $nisn    = Auth::guard('siswa')->id();
+        $tglIzin = $request->tgl_izin;
 
-        // Validasi status hanya i atau s
-        if (!in_array($status, ['i', 's'])) {
-            return response()->json(['status' => 'error', 'message' => 'Status tidak valid. Hanya "i" (Izin) atau "s" (Sakit).'], 400);
-        }
-
-        // === PENGECEKAN DUPLIKASI IZIN BARU ===
-        $cekIzin = DB::table('pengajuan_izin')
+        // Cek duplikasi izin pada tanggal yang sama
+        $sudahAda = DB::table('pengajuan_izin')
             ->where('nisn', $nisn)
-            ->where('tgl_izin', $tgl_izin)
-            ->count();
-            
-        if ($cekIzin > 0) {
-            return response()->json(['status' => 'error', 'message' => 'Anda sudah mengajukan izin pada tanggal ' . date('d-m-Y', strtotime($tgl_izin)) . '.'], 409);
+            ->where('tgl_izin', $tglIzin)
+            ->exists();
+
+        if ($sudahAda) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Anda sudah mengajukan izin pada tanggal ' . \Carbon\Carbon::parse($tglIzin)->format('d-m-Y') . '.',
+            ], 409);
         }
-        // ======================================
 
         try {
-            // Simpan data izin ke database dengan shortcode i atau s
-            $insert = DB::table('pengajuan_izin')->insert([
-                'nisn' => $nisn,
-                'tgl_izin' => $tgl_izin,
-                'status' => $status,
-                'keterangan' => $alasan,
-                'status_approved' => 0, // 0 = pending, 1 = approved, 2 = rejected
+            DB::table('pengajuan_izin')->insert([
+                'nisn'            => $nisn,
+                'tgl_izin'        => $tglIzin,
+                'status'          => $request->status,
+                'keterangan'      => $request->keterangan,
+                'status_approved' => 0,
+                'created_at'      => now(),
+                'updated_at'      => now(),
             ]);
 
-            if ($insert) {
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Izin berhasil diajukan.',
-                    'redirect' => route('presensi.izin')
-                ]);
-            } else {
-                return response()->json(['status' => 'error', 'message' => 'Gagal simpan database saat mengajukan izin. Silakan coba lagi.']);
-            }
+            return response()->json([
+                'status'   => 'success',
+                'message'  => 'Izin berhasil diajukan.',
+                'redirect' => route('presensi.izin'),
+            ]);
         } catch (\Exception $e) {
             Log::error('Storeizin Error: ' . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Gagal mengajukan izin karena masalah server.'], 500);
+            return response()->json(['status' => 'error', 'message' => 'Gagal mengajukan izin.'], 500);
         }
     }
 
-    public function monitoring(){
+    // ─── Admin Methods ────────────────────────────────────────────────────────
+
+    /**
+     * Halaman monitoring presensi (admin).
+     */
+    public function monitoring()
+    {
         return view('presensi.monitoring');
     }
 
-    public function getPresensi(Request $request)
+    /**
+     * API: jumlah & data presensi terbaru untuk live polling (admin).
+     */
+    public function monitoringCount(Request $request)
     {
-    $tanggal = $request->tanggal;
-    $presensi = DB::table('presensi')
-        ->select('presensi.*','nama_lengkap', 'nama_jurusan')
-        ->join('siswa','presensi.nisn','=','siswa.nisn')
-        ->join('jurusan','siswa.kode_jurusan','=','jurusan.kode_jurusan')
-        ->where('tgl_presensi', $tanggal) 
-        ->get();
-    return view('presensi.getpresensi', compact('presensi'));
+        $tanggal = $request->input('tanggal', now()->toDateString());
+        $sinceId = (int) $request->input('since_id', 0);
+
+        $count  = DB::table('presensi')->where('tgl_presensi', $tanggal)->count();
+        $lastId = DB::table('presensi')->where('tgl_presensi', $tanggal)->max('id') ?? 0;
+
+        $newEntries = DB::table('presensi')
+            ->select('presensi.*', 'siswa.nama_lengkap', 'siswa.kelas', 'siswa.foto')
+            ->join('siswa', 'presensi.nisn', '=', 'siswa.nisn')
+            ->where('tgl_presensi', $tanggal)
+            ->where('presensi.id', '>', $sinceId)
+            ->orderBy('presensi.id', 'desc')
+            ->get()
+            ->map(function ($p) {
+                $p->foto_url = !empty($p->foto)
+                    ? asset('storage/uploads/foto_siswa/' . $p->foto)
+                    : asset('assets/img/kosong.jpg');
+                return $p;
+            });
+
+        return response()->json([
+            'count'       => $count,
+            'last_id'     => $lastId,
+            'new_entries' => $newEntries,
+        ]);
     }
 
+    /**
+     * Ambil data presensi berdasarkan tanggal (admin, AJAX).
+     */
+    public function getPresensi(Request $request)
+    {
+        $tanggal = $request->input('tanggal', now()->toDateString());
+
+        $presensi = DB::table('presensi')
+            ->select('presensi.*', 'nama_lengkap', 'nama_jurusan')
+            ->join('siswa', 'presensi.nisn', '=', 'siswa.nisn')
+            ->join('jurusan', 'siswa.kode_jurusan', '=', 'jurusan.kode_jurusan')
+            ->where('tgl_presensi', $tanggal)
+            ->orderBy('jam_in')
+            ->get();
+
+        return view('presensi.getpresensi', compact('presensi'));
+    }
+
+    /**
+     * Tampilkan peta lokasi absensi (admin).
+     */
     public function tampilkanpeta(Request $request)
     {
-        $id=$request->id;
-        $presensi=DB::table('presensi')->where('id',$id)
-        ->join('siswa','presensi.nisn','=','siswa.nisn')
-        ->first();
+        $presensi = DB::table('presensi')
+            ->join('siswa', 'presensi.nisn', '=', 'siswa.nisn')
+            ->where('presensi.id', $request->input('id'))
+            ->first();
+
+        if (!$presensi) {
+            return redirect()->back()->with('warning', 'Data presensi tidak ditemukan.');
+        }
+
         return view('presensi.showmap', compact('presensi'));
     }
 
+    /**
+     * Halaman daftar pengajuan izin/sakit (admin).
+     */
     public function izinSakit()
     {
-        // Query untuk mengambil data pengajuan izin, diurutkan berdasarkan tanggal terbaru
         $izin_sakit = DB::table('pengajuan_izin')
-            // Join ke tabel karyawan untuk mendapatkan nama lengkap dan jabatan
             ->join('siswa', 'pengajuan_izin.nisn', '=', 'siswa.nisn')
-            // Urutkan berdasarkan tanggal izin secara descending (terbaru)
+            ->select('pengajuan_izin.*', 'siswa.nama_lengkap', 'siswa.kelas')
             ->orderBy('tgl_izin', 'desc')
             ->get();
 
-        // Kirim data ke view
         return view('presensi.izin_sakit', compact('izin_sakit'));
     }
 
+    /**
+     * Approve / tolak pengajuan izin (admin).
+     */
     public function approveIzinSakit(Request $request)
     {
-        // Ambil data dari form modal
-        $status_approve = $request->status_approve;
-        $id_izin_sakit_form = $request->id_izin_sakit_form; // ID data yang akan di-update
+        $request->validate([
+            'id_izin_sakit_form' => 'required|integer|exists:pengajuan_izin,id',
+            'status_approve'     => 'required|in:1,2',
+        ]);
 
         try {
-            // Proses update status approve
             DB::table('pengajuan_izin')
-                ->where('id', $id_izin_sakit_form)
+                ->where('id', $request->id_izin_sakit_form)
                 ->update([
-                    'status_approved' => $status_approve, // 1=Disetujui, 2=Ditolak
+                    'status_approved' => $request->status_approve,
+                    'updated_at'      => now(),
                 ]);
 
-            // Redirect kembali ke halaman data dengan pesan sukses
-            return redirect('/presensi/izin-sakit')->with(['success' => 'Data berhasil di-update.']);
-
+            return redirect()->route('presensi.izin-sakit')->with('success', 'Status izin berhasil diupdate.');
         } catch (\Exception $e) {
-            // Redirect kembali dengan pesan gagal
-            return redirect('/presensi/izin-sakit')->with(['warning' => 'Data gagal di-update.']);
+            return redirect()->route('presensi.izin-sakit')->with('warning', 'Gagal mengupdate status izin.');
         }
     }
 
+    /**
+     * Batalkan / reset status izin ke pending (admin).
+     */
     public function batalkanIzinSakit($id)
     {
         try {
-            // Proses update status approve menjadi 0 (Pending)
             DB::table('pengajuan_izin')
                 ->where('id', $id)
                 ->update([
-                    'status_approved' => 0, // 0 = Pending/Batalkan
+                    'status_approved' => 0,
+                    'updated_at'      => now(),
                 ]);
 
-            // Redirect kembali ke halaman data dengan pesan sukses
-            return redirect('/presensi/izin-sakit')->with(['success' => 'Status berhasil dibatalkan (Pending).']);
-
+            return redirect()->route('presensi.izin-sakit')->with('success', 'Status izin berhasil direset ke pending.');
         } catch (\Exception $e) {
-            // Redirect kembali dengan pesan gagal
-            return redirect('/presensi/izin-sakit')->with(['warning' => 'Gagal membatalkan status.']);
+            return redirect()->route('presensi.izin-sakit')->with('warning', 'Gagal mereset status izin.');
         }
     }
+
 }

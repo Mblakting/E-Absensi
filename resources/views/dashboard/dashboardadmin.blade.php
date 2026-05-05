@@ -24,7 +24,7 @@
             <div class="row row-deck row-cards mb-4">
                 {{-- Hadir --}}
                 <div class="col-sm-6 col-xl-3">
-                    <a href="/presensi/monitoring" class="text-decoration-none">
+                    <a href="{{ route('presensi.monitoring') }}" class="text-decoration-none">
                         <div class="card card-sm stat-card" style="cursor:pointer;transition:transform .18s,box-shadow .18s;">
                             <div class="card-body">
                                 <div class="row align-items-center">
@@ -48,7 +48,7 @@
 
                 {{-- Terlambat --}}
                 <div class="col-sm-6 col-xl-3">
-                    <a href="/presensi/monitoring" class="text-decoration-none">
+                    <a href="{{ route('presensi.monitoring') }}" class="text-decoration-none">
                         <div class="card card-sm stat-card" style="cursor:pointer;transition:transform .18s,box-shadow .18s;">
                             <div class="card-body">
                                 <div class="row align-items-center">
@@ -72,7 +72,7 @@
 
                 {{-- Izin --}}
                 <div class="col-sm-6 col-xl-3">
-                    <a href="/presensi/izin-sakit" class="text-decoration-none">
+                    <a href="{{ route('presensi.izin-sakit') }}" class="text-decoration-none">
                         <div class="card card-sm stat-card" style="cursor:pointer;transition:transform .18s,box-shadow .18s;">
                             <div class="card-body">
                                 <div class="row align-items-center">
@@ -96,7 +96,7 @@
 
                 {{-- Sakit --}}
                 <div class="col-sm-6 col-xl-3">
-                    <a href="/presensi/izin-sakit" class="text-decoration-none">
+                    <a href="{{ route('presensi.izin-sakit') }}" class="text-decoration-none">
                         <div class="card card-sm stat-card" style="cursor:pointer;transition:transform .18s,box-shadow .18s;">
                             <div class="card-body">
                                 <div class="row align-items-center">
@@ -148,28 +148,28 @@
                         <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-6">
-                                    <a href="/presensi/monitoring" class="btn btn-outline-success w-100 py-3 quick-action-btn">
+                                    <a href="{{ route('presensi.monitoring') }}" class="btn btn-outline-success w-100 py-3 quick-action-btn">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-1" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 4m0 1a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1z" /><path d="M7 20h10" /><path d="M9 16v4" /><path d="M15 16v4" /></svg>
                                         <div class="fw-bold">Monitoring</div>
                                         <div class="small text-muted">Lihat presensi hari ini</div>
                                     </a>
                                 </div>
                                 <div class="col-6">
-                                    <a href="/presensi/izin-sakit" class="btn btn-outline-warning w-100 py-3 quick-action-btn">
+                                    <a href="{{ route('presensi.izin-sakit') }}" class="btn btn-outline-warning w-100 py-3 quick-action-btn">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-1" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" /><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" /><path d="M10 14l4 0" /><path d="M12 12l0 4" /></svg>
                                         <div class="fw-bold">Izin / Sakit</div>
                                         <div class="small text-muted">Proses pengajuan izin</div>
                                     </a>
                                 </div>
                                 <div class="col-6">
-                                    <a href="/siswa" class="btn btn-outline-primary w-100 py-3 quick-action-btn">
+                                    <a href="{{ route('siswa.index') }}" class="btn btn-outline-primary w-100 py-3 quick-action-btn">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-1" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" /><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /></svg>
                                         <div class="fw-bold">Data Siswa</div>
                                         <div class="small text-muted">Kelola data siswa</div>
                                     </a>
                                 </div>
                                 <div class="col-6">
-                                    <a href="/jurusan" class="btn btn-outline-info w-100 py-3 quick-action-btn">
+                                    <a href="{{ route('jurusan.index') }}" class="btn btn-outline-info w-100 py-3 quick-action-btn">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-1" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21l18 0" /><path d="M9 8l1 0" /><path d="M9 12l1 0" /><path d="M9 16l1 0" /><path d="M14 8l1 0" /><path d="M14 12l1 0" /><path d="M14 16l1 0" /><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16" /></svg>
                                         <div class="fw-bold">Data Jurusan</div>
                                         <div class="small text-muted">Kelola jurusan</div>

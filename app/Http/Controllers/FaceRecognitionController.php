@@ -7,36 +7,54 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Traits\HasversineDistance;
 
 class FaceRecognitionController extends Controller
 {
+    use HasversineDistance;
     /**
      * Simpan face descriptor untuk siswa tertentu (admin only).
-     * Menerima array descriptor 128-dimensi dari face-api.js
      */
     public function saveDescriptor(Request $request)
     {
-        $nisn = $request->input('nisn');
-        $descriptor = $request->input('descriptor'); // array float 128 dimensi
+        $request->validate([
+            'nisn'       => 'required|string|exists:siswa,nisn',
+            'descriptor' => 'required|array|size:128',
+        ]);
 
-        if (!$nisn || !$descriptor) {
-            return response()->json(['status' => 'error', 'message' => 'Data tidak lengkap'], 422);
-        }
+        $nisn       = $request->nisn;
+        $descriptor = $request->descriptor;
+        $fotoBase64 = $request->input('foto_snapshot');
 
-        // Validasi descriptor adalah array dengan 128 elemen
-        if (!is_array($descriptor) || count($descriptor) !== 128) {
-            return response()->json(['status' => 'error', 'message' => 'Format descriptor wajah tidak valid'], 422);
+        // Pastikan semua elemen descriptor adalah angka
+        foreach ($descriptor as $val) {
+            if (!is_numeric($val)) {
+                return response()->json(['status' => 'error', 'message' => 'Format descriptor wajah tidak valid.'], 422);
+            }
         }
 
         $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
-        if (!$siswa) {
-            return response()->json(['status' => 'error', 'message' => 'Siswa tidak ditemukan'], 404);
-        }
 
         try {
-            DB::table('siswa')->where('nisn', $nisn)->update([
-                'face_descriptor' => json_encode($descriptor),
-            ]);
+            $updateData = ['face_descriptor' => json_encode($descriptor), 'updated_at' => now()];
+
+            if (!empty($fotoBase64)) {
+                $parts = explode(';base64,', $fotoBase64);
+                if (count($parts) === 2) {
+                    $imageData = base64_decode($parts[1]);
+                    if ($imageData !== false) {
+                        $fileName = $nisn . '_face.jpg';
+                        $filePath = 'uploads/foto_siswa/' . $fileName;
+                        Storage::disk('public')->makeDirectory('uploads/foto_siswa');
+
+                        if (Storage::disk('public')->put($filePath, $imageData)) {
+                            $updateData['foto'] = $fileName;
+                        }
+                    }
+                }
+            }
+
+            DB::table('siswa')->where('nisn', $nisn)->update($updateData);
 
             return response()->json([
                 'status'  => 'success',
@@ -44,7 +62,7 @@ class FaceRecognitionController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('FaceRecognition saveDescriptor error: ' . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Gagal menyimpan data wajah'], 500);
+            return response()->json(['status' => 'error', 'message' => 'Gagal menyimpan data wajah.'], 500);
         }
     }
 
@@ -53,23 +71,25 @@ class FaceRecognitionController extends Controller
      */
     public function deleteDescriptor(Request $request)
     {
-        $nisn = $request->input('nisn');
-
-        if (!$nisn) {
-            return response()->json(['status' => 'error', 'message' => 'NISN tidak ditemukan'], 422);
-        }
+        $request->validate([
+            'nisn' => 'required|string|exists:siswa,nisn',
+        ]);
 
         try {
-            DB::table('siswa')->where('nisn', $nisn)->update(['face_descriptor' => null]);
-            return response()->json(['status' => 'success', 'message' => 'Data wajah berhasil dihapus']);
+            DB::table('siswa')->where('nisn', $request->nisn)->update([
+                'face_descriptor' => null,
+                'updated_at'      => now(),
+            ]);
+
+            return response()->json(['status' => 'success', 'message' => 'Data wajah berhasil dihapus.']);
         } catch (\Exception $e) {
-            return response()->json(['status' => 'error', 'message' => 'Gagal menghapus data wajah'], 500);
+            Log::error('FaceRecognition deleteDescriptor error: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Gagal menghapus data wajah.'], 500);
         }
     }
 
     /**
      * Ambil semua descriptor wajah yang sudah terdaftar (untuk client-side matching).
-     * Hanya mengembalikan data yang sudah punya face_descriptor.
      */
     public function getDescriptors()
     {
@@ -80,10 +100,12 @@ class FaceRecognitionController extends Controller
 
         $data = $siswas->map(function ($s) {
             return [
-                'nisn'           => $s->nisn,
-                'nama_lengkap'   => $s->nama_lengkap,
-                'kelas'          => $s->kelas,
-                'foto'           => $s->foto ? asset('storage/uploads/foto_siswa/' . $s->foto) : null,
+                'nisn'            => $s->nisn,
+                'nama_lengkap'    => $s->nama_lengkap,
+                'kelas'           => $s->kelas,
+                'foto'            => !empty($s->foto)
+                    ? asset('storage/uploads/foto_siswa/' . $s->foto)
+                    : null,
                 'face_descriptor' => json_decode($s->face_descriptor, true),
             ];
         });
@@ -103,7 +125,7 @@ class FaceRecognitionController extends Controller
             ->first();
 
         if (!$siswa) {
-            return redirect('/siswa')->with('warning', 'Siswa tidak ditemukan');
+            return redirect()->route('siswa.index')->with('warning', 'Siswa tidak ditemukan.');
         }
 
         return view('face.enroll', compact('siswa'));
@@ -111,163 +133,145 @@ class FaceRecognitionController extends Controller
 
     /**
      * Halaman absensi dengan face recognition (siswa).
-     * Menggantikan halaman absen biasa.
      */
     public function absenFacePage()
     {
-        $nisn = Auth::guard('siswa')->user()->nisn;
-        $hariini = date('Y-m-d');
+        $nisn    = Auth::guard('siswa')->id();
+        $hariini = now()->toDateString();
 
-        $cek = DB::table('presensi')
+        $cek   = DB::table('presensi')
             ->where('nisn', $nisn)
             ->where('tgl_presensi', $hariini)
             ->first();
 
-        // Cek apakah siswa sudah mendaftarkan wajah
-        $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
+        $siswa   = DB::table('siswa')->where('nisn', $nisn)->first();
         $hasFace = !empty($siswa->face_descriptor);
 
-        return view('face.absen', compact('cek', 'hasFace'));
+        $fotoSiswa = !empty($siswa->foto)
+            ? asset('storage/uploads/foto_siswa/' . $siswa->foto)
+            : asset('assets/img/sample/avatar/avatar1.jpg');
+
+        return view('face.absen', compact('cek', 'hasFace', 'fotoSiswa'));
     }
 
     /**
      * Proses absensi dengan face recognition.
-     * Menerima: image (base64), lokasi, nisn_match (hasil pencocokan client-side), confidence
      */
     public function storeAbsenFace(Request $request)
     {
-        $nisn_match   = $request->input('nisn_match');
-        $confidence   = $request->input('confidence'); // jarak euclidean (lebih kecil = lebih mirip)
-        $lokasi       = $request->input('lokasi');
-        $image        = $request->input('image');
+        $request->validate([
+            'nisn_match' => 'required|string',
+            'confidence' => 'required|numeric',
+            'lokasi'     => 'required|string',
+            'image'      => 'required|string',
+        ]);
 
-        // Validasi input
-        if (!$nisn_match || !$lokasi || !$image) {
-            return response()->json(['status' => 'gagal', 'message' => 'Data tidak lengkap'], 422);
-        }
+        $nisnMatch  = $request->nisn_match;
+        $confidence = (float) $request->confidence;
+        $lokasi     = $request->lokasi;
+        $image      = $request->image;
 
-        // Threshold: jarak euclidean face-api.js, nilai < 0.6 dianggap cocok
-        if ((float)$confidence > 0.55) {
+        // Threshold face-api.js: nilai < 0.55 dianggap cocok
+        if ($confidence > 0.55) {
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Wajah tidak dikenali! Pastikan pencahayaan cukup dan posisi wajah tepat.',
-                'type'    => 'face_mismatch'
+                'type'    => 'face_mismatch',
             ]);
         }
 
         // Pastikan siswa yang login sama dengan yang dikenali
-        $nisn_login = Auth::guard('siswa')->user()->nisn;
-        if ($nisn_match !== $nisn_login) {
+        $nisnLogin = Auth::guard('siswa')->id();
+        if ($nisnMatch !== $nisnLogin) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Wajah tidak cocok dengan akun yang login!',
-                'type'    => 'face_mismatch'
+                'message' => 'Wajah tidak cocok dengan akun yang sedang login!',
+                'type'    => 'face_mismatch',
             ]);
         }
 
-        // Validasi lokasi GPS
-        $latitudesekolah  = -7.671325;
-        $longitudesekolah = 110.589607;
-
-        $lokasiuser    = explode(',', $lokasi);
-        $latitudeuser  = trim($lokasiuser[0]);
-        $longitudeuser = trim($lokasiuser[1]);
-
-        $jarak  = $this->distance($latitudesekolah, $longitudesekolah, $latitudeuser, $longitudeuser);
-        $radius = round($jarak['meters']);
-
-        if ($radius > 20000) {
+        // Validasi koordinat & radius sekolah
+        $lokasiCheck = $this->validateSchoolRadius($lokasi);
+        if (!$lokasiCheck['valid']) {
+            $statusCode = isset($lokasiCheck['type']) ? 200 : 422;
             return response()->json([
-                'status'  => 'error',
-                'message' => 'Anda berada di luar area sekolah (' . $radius . ' meter)!',
-                'type'    => 'out'
-            ]);
+                'status'  => isset($lokasiCheck['type']) ? 'error' : 'gagal',
+                'message' => $lokasiCheck['message'],
+                'type'    => $lokasiCheck['type'] ?? null,
+            ], $statusCode);
         }
 
-        $tgl_presensi = date('Y-m-d');
-        $jam          = date('H:i:s');
+        $tglPresensi = now()->toDateString();
+        $jam         = now()->format('H:i:s');
 
-        // Cek apakah sudah absen masuk hari ini
         $cek = DB::table('presensi')
-            ->where('nisn', $nisn_login)
-            ->where('tgl_presensi', $tgl_presensi)
+            ->where('nisn', $nisnLogin)
+            ->where('tgl_presensi', $tglPresensi)
             ->first();
+
+        if ($cek && !empty($cek->jam_out)) {
+            return response()->json([
+                'status'  => 'gagal',
+                'message' => 'Anda sudah melakukan presensi masuk dan pulang hari ini.',
+            ], 409);
+        }
 
         $ket = $cek ? 'out' : 'in';
 
         // Simpan foto absensi
-        $image_parts = explode(';base64,', $image);
-        if (count($image_parts) !== 2) {
-            return response()->json(['status' => 'gagal', 'message' => 'Format gambar tidak valid'], 400);
+        $imageParts = explode(';base64,', $image);
+        if (count($imageParts) !== 2) {
+            return response()->json(['status' => 'gagal', 'message' => 'Format gambar tidak valid.'], 400);
         }
 
-        $image_base64 = base64_decode($image_parts[1]);
-        if ($image_base64 === false) {
-            return response()->json(['status' => 'gagal', 'message' => 'Gagal decode gambar'], 400);
+        $imageData = base64_decode($imageParts[1]);
+        if ($imageData === false) {
+            return response()->json(['status' => 'gagal', 'message' => 'Gagal decode gambar.'], 400);
         }
 
-        $formatName = $nisn_login . '-' . $tgl_presensi . '-' . $ket . '-face';
-        $fileName   = $formatName . '.jpg';
-        $filePath   = 'uploads/absensi/' . $fileName;
+        $fileName = $nisnLogin . '-' . $tglPresensi . '-' . $ket . '-face.jpg';
+        $filePath = 'uploads/absensi/' . $fileName;
 
         Storage::disk('public')->makeDirectory('uploads/absensi');
-        $saved = Storage::disk('public')->put($filePath, $image_base64);
 
-        if (!$saved) {
-            Log::error("Gagal simpan foto absensi face: $filePath");
-            return response()->json(['status' => 'gagal', 'message' => 'Gagal menyimpan foto'], 500);
+        if (!Storage::disk('public')->put($filePath, $imageData)) {
+            Log::error("Gagal simpan foto absensi face: {$filePath}");
+            return response()->json(['status' => 'gagal', 'message' => 'Gagal menyimpan foto.'], 500);
         }
 
-        // Proses absen masuk / pulang
         if ($cek) {
-            if (!empty($cek->jam_out)) {
-                return response()->json(['status' => 'gagal', 'message' => 'Anda sudah melakukan presensi masuk dan pulang hari ini'], 409);
-            }
-
             DB::table('presensi')
-                ->where('tgl_presensi', $tgl_presensi)
-                ->where('nisn', $nisn_login)
+                ->where('nisn', $nisnLogin)
+                ->where('tgl_presensi', $tglPresensi)
                 ->update([
                     'jam_out'    => $jam,
                     'foto_out'   => $fileName,
                     'lokasi_out' => $lokasi,
+                    'updated_at' => now(),
                 ]);
 
             return response()->json([
                 'status'  => 'success',
                 'message' => 'Absen Pulang Berhasil! Hati-Hati Di Jalan 👋',
-                'type'    => 'out'
-            ]);
-        } else {
-            DB::table('presensi')->insert([
-                'nisn'         => $nisn_login,
-                'tgl_presensi' => $tgl_presensi,
-                'jam_in'       => $jam,
-                'foto_in'      => $fileName,
-                'lokasi_in'    => $lokasi,
-            ]);
-
-            return response()->json([
-                'status'  => 'success',
-                'message' => 'Absen Masuk Berhasil! Selamat Belajar 🎉',
-                'type'    => 'in'
+                'type'    => 'out',
             ]);
         }
+
+        DB::table('presensi')->insert([
+            'nisn'         => $nisnLogin,
+            'tgl_presensi' => $tglPresensi,
+            'jam_in'       => $jam,
+            'foto_in'      => $fileName,
+            'lokasi_in'    => $lokasi,
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Absen Masuk Berhasil! Selamat Belajar 🎉',
+            'type'    => 'in',
+        ]);
     }
 
-    /**
-     * Hitung jarak antara dua koordinat GPS (dalam meter).
-     */
-    private function distance($lat1, $lon1, $lat2, $lon2): array
-    {
-        $theta     = $lon1 - $lon2;
-        $miles     = sin(deg2rad($lat1)) * sin(deg2rad($lat2))
-                   + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * cos(deg2rad($theta));
-        $miles     = acos($miles);
-        $miles     = rad2deg($miles);
-        $miles     = $miles * 60 * 1.1515;
-        $kilometers = $miles * 1.609344;
-        $meters    = $kilometers * 1000;
-        return compact('meters');
-    }
 }

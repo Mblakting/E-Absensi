@@ -110,7 +110,7 @@
                 </form>
 
                 <div class="text-center mt-3">
-                    <small class="text-muted">Login sebagai Admin? <a href="/panel">Klik di sini</a></small>
+                    <small class="text-muted">Login sebagai Admin? <a href="{{ route('loginadmin') }}">Klik di sini</a></small>
                 </div>
             </div>
         </div>

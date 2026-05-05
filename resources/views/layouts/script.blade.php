@@ -24,13 +24,10 @@
     <!-- Conditionally load AmCharts only if #chartdiv exists to save bandwidth on pages without charts -->
     <script>
         (function(){
-            function loadScript(src, attrs){
+            function loadScript(src){
                 return new Promise(function(resolve, reject){
                     var s = document.createElement('script');
                     s.src = src;
-                    if(attrs){
-                        Object.keys(attrs).forEach(function(k){ s.setAttribute(k, attrs[k]); });
-                    }
                     s.onload = resolve;
                     s.onerror = reject;
                     document.head.appendChild(s);
@@ -43,19 +40,13 @@
                 .then(function(){ return loadScript('https://cdn.amcharts.com/lib/4/charts.js'); })
                 .then(function(){ return loadScript('https://cdn.amcharts.com/lib/4/themes/animated.js'); })
                 .then(function(){
-                    // initialize chart if needed (guarded to avoid errors)
-                    if(window.am4core && window.am4charts){
+                    if(window.am4core && window.am4charts && window.chartData){
                         am4core.ready(function () {
                             am4core.useTheme(am4themes_animated);
                             var chart = am4core.create("chartdiv", am4charts.PieChart3D);
                             chart.hiddenState.properties.opacity = 0;
                             chart.legend = new am4charts.Legend();
-                            chart.data = [
-                                { country: "Hadir", litres: 501.9 },
-                                { country: "Sakit", litres: 301.9 },
-                                { country: "Izin", litres: 201.1 },
-                                { country: "Terlambat", litres: 165.8 }
-                            ];
+                            chart.data = window.chartData;
                             var series = chart.series.push(new am4charts.PieSeries3D());
                             series.dataFields.value = "litres";
                             series.dataFields.category = "country";
@@ -72,7 +63,6 @@
                         });
                     }
                 }).catch(function(err){
-                    // Silently fail - chart won't render but page stays usable
                     console.warn('Failed to load amcharts:', err);
                 });
             }

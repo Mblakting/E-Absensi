@@ -40,10 +40,13 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        // Guard untuk siswa (autentikasi dengan NISN)
         'siswa' => [
             'driver' => 'session',
             'provider' => 'siswas',
         ],
+        // Guard untuk admin (autentikasi dengan email)
+        // Alias 'user' agar konsisten dengan kode yang sudah ada
         'user' => [
             'driver' => 'session',
             'provider' => 'users',
@@ -74,7 +77,7 @@ return [
         ],
         'siswas' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_SISWA_MODEL', App\Models\siswa::class),
+            'model' => env('AUTH_SISWA_MODEL', App\Models\Siswa::class),
         ],
 
         // 'users' => [

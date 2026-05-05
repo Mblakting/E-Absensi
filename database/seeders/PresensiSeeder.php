@@ -7,12 +7,17 @@ use Illuminate\Support\Facades\DB;
 
 class PresensiSeeder extends Seeder
 {
+    /**
+     * Seed data presensi demo.
+     * NISN harus sesuai dengan data di SiswaSeeder.
+     */
     public function run(): void
     {
-        $today = date('Y-m-d');
-        $yesterday = date('Y-m-d', strtotime('-1 day'));
+        $today     = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
 
-        DB::table('presensi')->insert([
+        DB::table('presensi')->insertOrIgnore([
+            // Budi Santoso — absen masuk hari ini (tepat waktu)
             [
                 'nisn'         => '0012345678',
                 'tgl_presensi' => $today,
@@ -25,10 +30,11 @@ class PresensiSeeder extends Seeder
                 'created_at'   => now(),
                 'updated_at'   => now(),
             ],
+            // Siti Rahayu — absen masuk hari ini (terlambat)
             [
                 'nisn'         => '0023456789',
                 'tgl_presensi' => $today,
-                'jam_in'       => '07:10:00',
+                'jam_in'       => '07:15:00',
                 'jam_out'      => null,
                 'foto_in'      => '',
                 'foto_out'     => null,
@@ -37,6 +43,7 @@ class PresensiSeeder extends Seeder
                 'created_at'   => now(),
                 'updated_at'   => now(),
             ],
+            // Budi Santoso — absen lengkap kemarin
             [
                 'nisn'         => '0012345678',
                 'tgl_presensi' => $yesterday,
