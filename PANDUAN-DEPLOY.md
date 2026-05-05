@@ -19,14 +19,9 @@
 ### Langkah 1: Buka Terminal di folder proyek
 Klik kanan di folder proyek → "Open in Terminal" atau "Git Bash Here"
 
-### Langkah 2: Tambahkan file baru ke Git
-```bash
-git add nixpacks.toml railway-start.sh
-git commit -m "chore: add Railway deployment config"
-git push origin main
-```
-
-> ✅ Selesai jika tidak ada error merah. Lanjut ke Bagian 2.
+### Langkah 2: Kode sudah siap di GitHub ✅
+File konfigurasi deploy sudah otomatis di-push ke branch `face-recognition` di repo kamu.  
+Tidak perlu melakukan apa-apa di sini. Langsung lanjut ke Bagian 2!
 
 ---
 
@@ -49,7 +44,8 @@ Buka browser, pergi ke: **https://railway.app**
 1. Di dashboard Railway, klik tombol **"New Project"** (tombol ungu)
 2. Pilih **"Deploy from GitHub repo"**
 3. Cari dan klik repo **"E-Presensi"** milikmu
-4. Klik **"Deploy Now"**
+4. Railway akan tanya branch mana — pilih **"face-recognition"** (ini branch yang paling lengkap)
+5. Klik **"Deploy Now"**
 
 > Railway akan mulai build otomatis. Ini akan **GAGAL dulu** — itu normal! Kita perlu tambahkan database dulu.
 
