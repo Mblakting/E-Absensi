@@ -24,5 +24,10 @@ cmds = [
     "npm run build"
 ]
 
+[phases.build]
+cmds = [
+    "echo 'Build phase complete - skipping artisan commands (no DB at build time)'"
+]
+
 [start]
 cmd = "bash railway-start.sh"
