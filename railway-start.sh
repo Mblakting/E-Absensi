@@ -7,48 +7,47 @@ echo "================================================"
 
 PORT=${PORT:-8080}
 
-# Jalankan server Laravel di background DULU
-# supaya healthcheck Railway bisa lewat
+# 1. Clear semua cache lama & cache ulang
 echo ""
-echo "Menjalankan server di port $PORT..."
-php artisan serve --host=0.0.0.0 --port=$PORT &
-SERVER_PID=$!
+echo "[1/5] Clear & rebuild cache..."
+php artisan config:clear 2>/dev/null || true
+php artisan route:clear 2>/dev/null || true
+php artisan view:clear 2>/dev/null || true
+php artisan cache:clear 2>/dev/null || true
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+echo "      Cache selesai!"
 
-# Tunggu server benar-benar siap (maks 30 detik)
-echo "Menunggu server siap..."
-for i in $(seq 1 30); do
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:$PORT/up | grep -q "200\|302"; then
-        echo "Server siap!"
-        break
-    fi
-    sleep 1
-done
-
-# Sekarang jalankan setup (server sudah aktif, healthcheck sudah lewat)
+# 2. Jalankan migrasi database
 echo ""
-echo "[1/4] Menjalankan migrasi database..."
+echo "[2/5] Menjalankan migrasi database..."
 php artisan migrate --force
 echo "      Migrasi selesai!"
 
+# 3. Seed data awal
 echo ""
-echo "[2/4] Mengisi data awal..."
+echo "[3/5] Mengisi data awal..."
 php artisan db:seed --force
 echo "      Seeding selesai!"
 
+# 4. Buat symlink storage
 echo ""
-echo "[3/4] Membuat storage symlink..."
+echo "[4/5] Membuat storage symlink..."
 php artisan storage:link --force 2>/dev/null || true
 echo "      Storage link selesai!"
 
+# 5. Set permission
 echo ""
-echo "[4/4] Set permission folder..."
+echo "[5/5] Set permission folder..."
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 echo "      Permission selesai!"
 
 echo ""
 echo "================================================"
-echo "   Semua setup selesai! Aplikasi berjalan."
+echo "   Semua setup selesai! Menjalankan server..."
+echo "   Port: $PORT"
 echo "================================================"
 
-# Tunggu server (jangan exit)
-wait $SERVER_PID
+# Jalankan server
+exec php artisan serve --host=0.0.0.0 --port=$PORT
