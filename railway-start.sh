@@ -7,17 +7,15 @@ echo "================================================"
 
 PORT=${PORT:-8080}
 
-# 1. Clear semua cache lama & cache ulang
+# 1. Hapus SEMUA cache lama (penting!)
 echo ""
-echo "[1/5] Clear & rebuild cache..."
+echo "[1/5] Membersihkan cache lama..."
 php artisan config:clear 2>/dev/null || true
 php artisan route:clear 2>/dev/null || true
 php artisan view:clear 2>/dev/null || true
 php artisan cache:clear 2>/dev/null || true
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-echo "      Cache selesai!"
+php artisan clear-compiled 2>/dev/null || true
+echo "      Cache bersih!"
 
 # 2. Jalankan migrasi database
 echo ""
@@ -49,5 +47,5 @@ echo "   Semua setup selesai! Menjalankan server..."
 echo "   Port: $PORT"
 echo "================================================"
 
-# Jalankan server
+# Jalankan server TANPA cache (baca langsung dari file)
 exec php artisan serve --host=0.0.0.0 --port=$PORT

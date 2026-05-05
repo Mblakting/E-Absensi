@@ -1,6 +1,9 @@
 [build]
 builder = "railpack"
 
+[build.environment]
+RAILPACK_NO_ARTISAN_OPTIMIZE = "true"
+
 [deploy]
 startCommand = "bash railway-start.sh"
 healthcheckPath = "/up"
