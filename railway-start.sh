@@ -5,27 +5,35 @@ echo "================================================"
 echo "   E-Presensi - Railway Startup Script"
 echo "================================================"
 
-# 1. Jalankan migrasi database
+# 1. Cache config, route, view (dilakukan di runtime bukan build time)
 echo ""
-echo "[1/4] Menjalankan migrasi database..."
+echo "[1/5] Caching konfigurasi..."
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+echo "      Cache selesai!"
+
+# 2. Jalankan migrasi database
+echo ""
+echo "[2/5] Menjalankan migrasi database..."
 php artisan migrate --force
 echo "      Migrasi selesai!"
 
-# 2. Seed data awal (jurusan, siswa demo, admin)
+# 3. Seed data awal (jurusan, siswa demo, admin)
 echo ""
-echo "[2/4] Mengisi data awal (jurusan, siswa, admin)..."
+echo "[3/5] Mengisi data awal..."
 php artisan db:seed --force
 echo "      Seeding selesai!"
 
-# 3. Buat symlink storage agar foto bisa diakses publik
+# 4. Buat symlink storage agar foto bisa diakses publik
 echo ""
-echo "[3/4] Membuat storage symlink..."
+echo "[4/5] Membuat storage symlink..."
 php artisan storage:link --force 2>/dev/null || true
 echo "      Storage link selesai!"
 
-# 4. Set permission folder storage
+# 5. Set permission folder storage
 echo ""
-echo "[4/4] Set permission folder..."
+echo "[5/5] Set permission folder..."
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 echo "      Permission selesai!"
 
