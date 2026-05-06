@@ -15,6 +15,8 @@ Route::middleware('guest:siswa')->group(function () {
     Route::post('/proseslogin', [AuthController::class, 'proseslogin'])
         ->middleware('throttle:10,1')
         ->name('proseslogin');
+    // Fallback: redirect GET /proseslogin ke halaman login
+    Route::get('/proseslogin', fn () => redirect('/'));
 });
 
 // ─── Guest: Admin ─────────────────────────────────────────────────────────────
@@ -23,6 +25,8 @@ Route::middleware('guest:user')->group(function () {
     Route::post('/prosesloginadmin', [AuthController::class, 'prosesloginadmin'])
         ->middleware('throttle:10,1')
         ->name('prosesloginadmin');
+    // Fallback: redirect GET /prosesloginadmin ke halaman login admin
+    Route::get('/prosesloginadmin', fn () => redirect('/panel'));
 });
 
 // ─── Auth: Siswa ──────────────────────────────────────────────────────────────
