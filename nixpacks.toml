@@ -32,7 +32,8 @@ cmds = [
 
 [phases.build]
 cmds = [
-    "composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist"
+    "composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist",
+    "composer dump-autoload --optimize --classmap-authoritative"
 ]
 
 [start]
