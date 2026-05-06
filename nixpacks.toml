@@ -1,330 +1,38 @@
-# Railway-Optimized nixpacks Configuration
-# PRIMARY DEPLOYMENT STRATEGY for Railway Platform
-# 
-# DEPLOYMENT STRATEGY SELECTION MECHANISM:
-# ==========================================
-# This configuration implements Railway's deployment strategy selection:
-# 
-# 1. PRIORITY 1 (ACTIVE): nixpacks.toml (THIS FILE)
-#    - Railway detects this file and uses Nixpacks build system
-#    - Pre-compiled PHP extensions eliminate compilation hangs
-#    - Optimized for Railway platform with 5-8 minute build times
-#    - Comprehensive build monitoring and error handling
-#
-# 2. PRIORITY 2 (FALLBACK): Dockerfile.backup 
-#    - Available as emergency fallback strategy
-#    - Excluded via .railwayignore to prevent conflicts
-#    - Contains timeout protection and retry logic
-#    - Can be activated by renaming to Dockerfile if needed
-#
-# 3. STRATEGY VALIDATION: Automatic detection during build
-#    - Validates nixpacks.toml presence (PRIMARY active)
-#    - Checks for Dockerfile conflicts (should not exist)
-#    - Confirms Dockerfile.backup availability (FALLBACK ready)
-#    - Reports strategy selection status in build logs
-#
-# DEPLOYMENT STRATEGY BENEFITS:
-# =============================
-# ✅ Eliminates PHP extension compilation hangs (PDO, PDO MySQL)
-# ✅ Uses pre-compiled packages from nixpkgs (no manual compilation)
-# ✅ Faster build times (5-8 minutes vs 15-20 minutes with Docker)
-# ✅ Better Railway platform integration and resource management
-# ✅ Automatic fallback capability available (Dockerfile.backup)
-# ✅ Comprehensive build monitoring and progress tracking
-# ✅ Strategy selection validation and conflict detection
-#
-# For detailed documentation, see: DEPLOYMENT-STRATEGY-SELECTION.md
-
 [phases.setup]
-# Pre-compiled PHP 8.2 with all required extensions from nixpkgs
-# This eliminates the need for manual compilation that causes deployment hangs
 nixPkgs = [
-    # Core PHP 8.2 runtime
     "php82",
-    
-    # Database extensions (pre-compiled to avoid PDO compilation hangs)
     "php82Extensions.pdo",
     "php82Extensions.pdo_mysql",
-    
-    # String and text processing extensions
     "php82Extensions.mbstring",
     "php82Extensions.xml",
-    "php82Extensions.tokenizer",
-    "php82Extensions.fileinfo",
-    "php82Extensions.ctype",
-    
-    # Network and security extensions
     "php82Extensions.curl",
-    "php82Extensions.openssl",
-    
-    # File and compression extensions
     "php82Extensions.zip",
-    
-    # Image processing extensions
     "php82Extensions.gd",
-    "php82Extensions.exif",
-    
-    # Mathematical and utility extensions
     "php82Extensions.bcmath",
-    
-    # Process control extensions
     "php82Extensions.pcntl",
-    
-    # Additional Laravel-required extensions
-    "php82Extensions.session",
-    "php82Extensions.filter",
-    "php82Extensions.json",
-    "php82Extensions.iconv",
-    
-    # Node.js runtime for frontend asset compilation
+    "php82Extensions.exif",
     "nodejs_20",
     "nodePackages.npm",
-    
-    # System utilities for Laravel operations
     "git",
-    "curl",
     "unzip"
 ]
 
-# Setup phase: Configure environment and verify extensions
 cmds = [
-    "echo '=== NIXPACKS BUILD: Setup Phase Started ==='",
-    "echo 'Timestamp: '$(date '+%Y-%m-%d %H:%M:%S')",
-    "echo 'DEPLOYMENT STRATEGY: Railway Nixpacks (Primary Strategy)'",
-    "echo 'Strategy Selection: nixpacks.toml detected and prioritized over Docker'",
-    "echo 'Using Railway-optimized nixpacks with pre-compiled extensions'",
-    "echo 'Fallback available: Dockerfile.backup (excluded by .railwayignore)'",
-    "echo ''",
-    
-    "echo '=== DEPLOYMENT STRATEGY VALIDATION ==='",
-    "echo 'Validating deployment strategy selection mechanism:'",
-    "echo 'Railway Strategy Detection Logic:'",
-    "echo '1. Check nixpacks.toml (PRIMARY) -> Use Nixpacks build system'",
-    "echo '2. Check Dockerfile (FALLBACK) -> Use Docker build system'", 
-    "echo '3. Auto-detection -> Use Railway defaults'",
-    "echo ''",
-    "echo 'Current Strategy Validation:'",
-    "if [ -f nixpacks.toml ]; then",
-    "    echo '✅ nixpacks.toml found - PRIMARY strategy active'",
-    "    echo '   → Railway will use Nixpacks build system'",
-    "    echo '   → Pre-compiled PHP extensions (no compilation hangs)'",
-    "    echo '   → Expected build time: 5-8 minutes'",
-    "else",
-    "    echo '❌ nixpacks.toml missing - strategy selection failed'",
-    "    echo '   → This should never happen - deployment will fail'",
-    "    exit 1",
-    "fi",
-    "if [ -f Dockerfile ]; then",
-    "    echo '⚠️  Dockerfile present - may conflict with nixpacks strategy'",
-    "    echo '   → Railway might choose Docker over nixpacks'",
-    "    echo '   → Check .railwayignore to ensure Dockerfile exclusion'",
-    "    echo '   → Consider renaming to Dockerfile.backup'",
-    "else",
-    "    echo '✅ No Dockerfile found - nixpacks strategy properly prioritized'",
-    "    echo '   → No strategy conflicts detected'",
-    "fi",
-    "if [ -f Dockerfile.backup ]; then",
-    "    echo '✅ Dockerfile.backup available as fallback strategy'",
-    "    echo '   → Emergency Docker fallback ready if needed'",
-    "    echo '   → Contains timeout protection and retry logic'",
-    "else",
-    "    echo '⚠️  No Docker fallback available'",
-    "    echo '   → Consider keeping Dockerfile.backup for emergencies'",
-    "fi",
-    "echo ''",
-    "echo 'Strategy Selection Summary:'",
-    "echo 'ACTIVE: Nixpacks (nixpacks.toml) - Primary deployment method'",
-    "echo 'AVAILABLE: Docker (Dockerfile.backup) - Emergency fallback'",
-    "echo 'EXCLUDED: Any Dockerfile in root - Prevents conflicts'",
-    "echo 'DOCUMENTATION: DEPLOYMENT-STRATEGY-SELECTION.md - Full details'",
-    "echo '✅ Deployment strategy validation completed successfully'",
-    "echo ''",
-    
-    "echo '=== VERIFYING PRE-COMPILED PHP EXTENSIONS ==='",
     "php -v",
-    "echo 'Checking required PHP extensions:'",
-    "php -m | grep -E '(pdo|pdo_mysql|mbstring|xml|curl|zip|gd|tokenizer|fileinfo|bcmath|ctype|openssl|exif|pcntl)' || echo 'Extension check will be done after full setup'",
-    "echo ''",
-    
-    "echo '=== VERIFYING NODE.JS ENVIRONMENT ==='",
     "node --version",
-    "npm --version",
-    "echo ''",
-    
-    "echo '=== VERIFYING SYSTEM TOOLS ==='",
-    "git --version",
-    "curl --version | head -1",
-    "which unzip",
-    "echo ''",
-    
-    "echo '✅ Setup phase completed - all tools available'",
-    "echo 'Deployment strategy: Nixpacks (Primary) with Docker fallback available'",
-    "echo ''"
+    "npm --version"
 ]
 
 [phases.install]
-# Install phase: Handle Node.js dependencies with robust error handling
 cmds = [
-    "echo '=== NIXPACKS BUILD: Install Phase Started ==='",
-    "echo 'Timestamp: '$(date '+%Y-%m-%d %H:%M:%S')",
-    "echo 'Installing Node.js dependencies and building frontend assets'",
-    "echo ''",
-    
-    "echo '=== CHECKING NODE.JS CONFIGURATION ==='",
-    "if [ -f package.json ]; then",
-    "    echo '✓ package.json found'",
-    "    echo 'Node.js dependencies to install:'",
-    "    cat package.json | grep -A 20 '\"devDependencies\"' | head -10 || echo 'No devDependencies section found'",
-    "else",
-    "    echo '⚠️  No package.json found - skipping Node.js dependencies'",
-    "    exit 0",
-    "fi",
-    "echo ''",
-    
-    "echo '=== INSTALLING NODE.JS DEPENDENCIES ==='",
-    "# Configure npm for Railway environment",
-    "npm config set audit false",
-    "npm config set fund false",
-    "npm config set progress false",
-    "npm config set loglevel warn",
-    "echo 'NPM configuration optimized for Railway deployment'",
-    "echo ''",
-    
-    "# Conditional installation based on lock file presence",
-    "if [ -f package-lock.json ] && [ -s package-lock.json ]; then",
-    "    echo '✓ package-lock.json found - using npm ci for reproducible builds'",
-    "    echo 'This ensures consistent dependency versions across deployments'",
-    "    npm ci --no-audit --no-fund --prefer-offline || {",
-    "        echo '❌ npm ci failed, falling back to npm install'",
-    "        npm install --no-audit --no-fund --prefer-offline",
-    "    }",
-    "else",
-    "    echo '⚠️  No package-lock.json found - using npm install'",
-    "    echo 'This will generate package-lock.json for future deployments'",
-    "    npm install --no-audit --no-fund --prefer-offline",
-    "fi",
-    "echo '✅ Node.js dependencies installed successfully'",
-    "echo ''",
-    
-    "echo '=== BUILDING FRONTEND ASSETS ==='",
-    "echo 'Running npm run build to compile frontend assets'",
-    "npm run build || {",
-    "    echo '❌ Frontend build failed'",
-    "    echo 'Available npm scripts:'",
-    "    npm run 2>&1 | grep -E '^  ' || echo 'No scripts found'",
-    "    echo 'Continuing without frontend build...'",
-    "}",
-    "echo '✅ Frontend assets built successfully'",
-    "echo ''",
-    
-    "echo '=== CLEANING UP NODE.JS CACHE ==='",
-    "npm cache clean --force 2>/dev/null || echo 'Cache clean skipped'",
-    "echo '✅ Install phase completed'",
-    "echo ''"
+    "npm ci --no-audit --no-fund || npm install --no-audit --no-fund",
+    "npm run build || echo 'Build skipped'"
 ]
 
 [phases.build]
-# Build phase: Install PHP dependencies with optimization
 cmds = [
-    "echo '=== NIXPACKS BUILD: Build Phase Started ==='",
-    "echo 'Timestamp: '$(date '+%Y-%m-%d %H:%M:%S')",
-    "echo 'Installing PHP dependencies and optimizing application'",
-    "echo ''",
-    
-    "echo '=== VERIFYING COMPOSER CONFIGURATION ==='",
-    "if [ -f composer.json ]; then",
-    "    echo '✓ composer.json found'",
-    "    composer --version",
-    "else",
-    "    echo '❌ No composer.json found - cannot proceed'",
-    "    exit 1",
-    "fi",
-    "echo ''",
-    
-    "echo '=== CONFIGURING COMPOSER FOR RAILWAY ==='",
-    "# Optimize Composer for Railway environment",
-    "composer config --global process-timeout 300",
-    "composer config --global cache-dir /tmp/composer-cache",
-    "composer config --global discard-changes true",
-    "echo 'Composer configured for Railway deployment'",
-    "echo ''",
-    
-    "echo '=== INSTALLING PHP DEPENDENCIES ==='",
-    "echo 'Running composer install with production optimizations'",
-    "composer install \\",
-    "    --no-dev \\",
-    "    --no-interaction \\",
-    "    --optimize-autoloader \\",
-    "    --no-scripts \\",
-    "    --prefer-dist \\",
-    "    --no-progress || {",
-    "        echo '❌ Composer install failed, retrying with verbose output'",
-    "        composer install --no-dev --no-interaction --optimize-autoloader --no-scripts --prefer-dist --verbose",
-    "    }",
-    "echo '✅ PHP dependencies installed successfully'",
-    "echo ''",
-    
-    "echo '=== RUNNING POST-AUTOLOAD SCRIPTS ==='",
-    "echo 'Executing Laravel post-autoload-dump scripts'",
-    "composer run-script post-autoload-dump || {",
-    "    echo '⚠️  Post-autoload scripts failed or not found - continuing'",
-    "    echo 'This is often normal for Laravel applications'",
-    "}",
-    "echo '✅ Post-autoload scripts completed'",
-    "echo ''",
-    
-    "echo '=== OPTIMIZING AUTOLOADER ==='",
-    "composer dump-autoload --optimize --no-dev || echo 'Autoloader optimization skipped'",
-    "echo '✅ Autoloader optimized'",
-    "echo ''",
-    
-    "echo '=== CLEANING UP COMPOSER CACHE ==='",
-    "rm -rf /tmp/composer-cache 2>/dev/null || echo 'Composer cache cleanup skipped'",
-    "echo '✅ Build phase completed'",
-    "echo ''",
-    
-    "echo '=== FINAL PHP EXTENSION VERIFICATION ==='",
-    "echo 'Verifying all required PHP extensions are loaded:'",
-    "php -m | grep -E '(pdo|pdo_mysql|mbstring|xml|curl|zip|gd|tokenizer|fileinfo|bcmath|ctype|openssl|exif|pcntl)' | sort",
-    "echo ''",
-    "echo 'PHP configuration summary:'",
-    "php -r \"echo 'PHP Version: ' . PHP_VERSION . PHP_EOL;\"",
-    "php -r \"echo 'Memory Limit: ' . ini_get('memory_limit') . PHP_EOL;\"",
-    "php -r \"echo 'Max Execution Time: ' . ini_get('max_execution_time') . PHP_EOL;\"",
-    "echo '✅ All PHP extensions verified and ready'",
-    "echo ''"
+    "composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist"
 ]
 
 [start]
-# Start phase: Use existing railway-start.sh script
 cmd = "bash railway-start.sh"
-
-# Railway-specific optimizations
-[variables]
-# Optimize build performance
-NIXPACKS_NO_CACHE = "false"
-NIXPACKS_BUILD_CACHE = "true"
-
-# PHP runtime optimizations
-PHP_MEMORY_LIMIT = "256M"
-PHP_MAX_EXECUTION_TIME = "300"
-PHP_POST_MAX_SIZE = "64M"
-PHP_UPLOAD_MAX_FILESIZE = "64M"
-
-# Node.js optimizations
-NODE_OPTIONS = "--max-old-space-size=512"
-NPM_CONFIG_AUDIT = "false"
-NPM_CONFIG_FUND = "false"
-NPM_CONFIG_PROGRESS = "false"
-
-# Composer optimizations
-COMPOSER_MEMORY_LIMIT = "512M"
-COMPOSER_PROCESS_TIMEOUT = "300"
-COMPOSER_DISCARD_CHANGES = "true"
-
-# Laravel optimizations
-APP_ENV = "production"
-APP_DEBUG = "false"
-LOG_CHANNEL = "stderr"
-SESSION_DRIVER = "file"
-CACHE_DRIVER = "file"
