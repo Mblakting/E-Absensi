@@ -2,216 +2,244 @@
 
 ## Overview
 
-Aplikasi Laravel E-Presensi mengalami dua kategori masalah utama: (1) kegagalan deployment di Railway karena file package-lock.json yang hilang dan konfigurasi Docker yang tidak optimal, dan (2) masalah autentikasi dan akses data setelah deployment berhasil. Strategi perbaikan melibatkan optimisasi Dockerfile untuk menangani ketiadaan package-lock.json, perbaikan konfigurasi build, dan memastikan sistem autentikasi multi-guard (siswa dan admin) berfungsi dengan benar di environment production.
+The Laravel application deployment is experiencing critical failures on Railway platform due to PHP extension compilation hangs during the Docker build process. The deployment consistently fails when attempting to compile PDO and PDO MySQL extensions, causing indefinite hangs and preventing successful application deployment. This design document outlines a comprehensive technical solution that switches from Docker-based compilation to Railway's native Nixpacks build system with pre-compiled PHP extensions, implements robust timeout protection, and ensures reliable deployment processes while maintaining all existing application functionality.
 
 ## Glossary
 
-- **Bug_Condition (C)**: Kondisi yang memicu kegagalan deployment atau masalah autentikasi - ketika Docker build gagal karena file tidak ditemukan atau ketika login siswa/admin gagal di production
-- **Property (P)**: Perilaku yang diharapkan - deployment berhasil tanpa error dan sistem autentikasi berfungsi untuk kedua guard (siswa dan admin)
-- **Preservation**: Fungsionalitas aplikasi Laravel yang sudah ada harus tetap berjalan normal setelah perbaikan
-- **Multi-Guard Authentication**: Sistem autentikasi Laravel dengan dua guard terpisah - 'siswa' (menggunakan NISN) dan 'user' (menggunakan email untuk admin)
-- **Railway Platform**: Platform deployment cloud yang menggunakan Docker untuk build dan deploy aplikasi
-- **Docker Build Context**: Proses build Docker yang memerlukan file package-lock.json untuk npm ci command
+- **Bug_Condition (C)**: The condition that triggers deployment failure - when Railway attempts to compile PHP extensions (PDO, PDO MySQL) during Docker build process
+- **Property (P)**: The desired behavior when deployment is triggered - successful completion within reasonable time limits with all services operational
+- **Preservation**: Existing Laravel application functionality, database operations, authentication, and static asset serving that must remain unchanged
+- **nixpacks.toml**: Railway's native build configuration file that uses pre-compiled packages instead of manual compilation
+- **PHP Extension Compilation**: The process of building PHP extensions from source code that causes the deployment hang
+- **Railway Platform**: Cloud deployment platform that supports both Docker and Nixpacks build systems
+- **Pre-compiled Extensions**: PHP extensions that are already built and packaged, eliminating compilation time and hang risks
 
 ## Bug Details
 
 ### Bug Condition
 
-Bug manifests dalam dua skenario utama: (1) ketika Railway mencoba build Docker image dan menemukan file package-lock.json tidak ada, menyebabkan build gagal pada step 7/13, dan (2) ketika aplikasi berhasil deploy namun sistem autentikasi tidak berfungsi untuk login siswa atau admin tidak dapat mengakses data siswa.
+The bug manifests when Railway attempts to deploy the Laravel application using Docker and encounters PHP extension compilation during the build process. The `docker-php-ext-install` commands for PDO and PDO MySQL extensions become unresponsive, causing the entire deployment pipeline to hang indefinitely without error messages or completion signals.
 
 **Formal Specification:**
 ```
-FUNCTION isBugCondition(input)
-  INPUT: input of type DeploymentAttempt OR AuthenticationAttempt
+FUNCTION isBugCondition(deploymentEvent)
+  INPUT: deploymentEvent of type RailwayDeployment
   OUTPUT: boolean
   
-  RETURN (input.type == "deployment" AND input.packageLockExists == false AND input.dockerBuildFails == true)
-         OR (input.type == "authentication" AND input.guard IN ['siswa', 'user'] AND input.loginFails == true)
-         OR (input.type == "data_access" AND input.userRole == "admin" AND input.canAccessStudentData == false)
+  RETURN deploymentEvent.buildSystem == "Docker"
+         AND deploymentEvent.currentStep == "PHP_EXTENSION_COMPILATION"
+         AND deploymentEvent.targetExtensions CONTAINS ["pdo", "pdo_mysql"]
+         AND deploymentEvent.status == "HANGING"
+         AND deploymentEvent.duration > REASONABLE_TIMEOUT
 END FUNCTION
 ```
 
 ### Examples
 
-- **Deployment Failure**: Docker build command `COPY package.json package-lock.json ./` gagal dengan error "failed to calculate checksum of ref: '/package-lock.json': not found"
-- **Student Login Failure**: Siswa dengan NISN valid tidak dapat login ke dashboard siswa setelah deployment
-- **Admin Login Failure**: Admin dengan email dan password valid tidak dapat login ke dashboard admin
-- **Data Access Failure**: Admin berhasil login namun tidak dapat melihat atau mengakses data siswa di dashboard admin
-- **Build Timeout**: Docker build berjalan terlalu lama dan dibatalkan dengan exit code 137
+- **Docker Build Hang**: Railway deployment reaches `RUN docker-php-ext-install pdo pdo_mysql` step and becomes unresponsive for 15+ minutes
+- **Timeout Without Error**: Build process shows no error messages but never progresses past PHP extension compilation
+- **Consistent Failure Pattern**: Every deployment attempt fails at the same compilation step regardless of code changes
+- **Resource Exhaustion**: Build containers may run out of memory or CPU during compilation without proper error reporting
 
 ## Expected Behavior
 
 ### Preservation Requirements
 
 **Unchanged Behaviors:**
-- Aplikasi Laravel harus tetap menjalankan semua fitur E-Presensi yang sudah ada
-- Database migrations dan seeding harus tetap berjalan dengan benar melalui render-start.sh
-- Static assets (CSS, JS, images) harus tetap di-build dan di-serve dengan benar
-- Konfigurasi environment variables dan database connection harus tetap menggunakan setup yang ada
-- Interface pengguna dan tampilan aplikasi harus tetap sama seperti sebelumnya
-- Sistem presensi, laporan, dan manajemen data harus tetap berfungsi normal
+- Laravel application functionality including student management, attendance tracking, and face recognition features must continue to work exactly as before
+- Database operations with MySQL including migrations, seeding, and all CRUD operations must remain unchanged
+- Authentication system for both students and administrators must continue to function correctly
+- Static asset serving including CSS, JavaScript, and image files must load properly without performance degradation
 
 **Scope:**
-Semua input yang TIDAK melibatkan proses deployment Docker atau autentikasi login harus tidak terpengaruh oleh perbaikan ini. Ini termasuk:
-- Operasi CRUD data siswa, jurusan, dan presensi yang sudah berjalan
-- Fitur face recognition dan upload foto
-- Navigasi antar halaman dalam aplikasi
-- Fungsi logout dan session management yang sudah ada
+All application-level functionality that does NOT involve the deployment build process should be completely unaffected by this fix. This includes:
+- Runtime PHP extension usage (PDO, PDO MySQL will still be available and functional)
+- Database connectivity and query execution
+- File uploads and storage operations
+- Session management and user authentication flows
 
 ## Hypothesized Root Cause
 
-Berdasarkan analisis kode dan deskripsi bug, kemungkinan penyebab utama adalah:
+Based on the bug description and analysis of deployment configuration, the most likely issues are:
 
-1. **Missing package-lock.json File**: Dockerfile menggunakan `npm ci` yang memerlukan package-lock.json, namun file ini tidak ada di repository
-   - Docker COPY command mencoba copy file yang tidak ada
-   - npm ci lebih strict dibanding npm install dan memerlukan lock file
+1. **Docker Build System Limitations**: Railway's Docker build environment may have resource constraints or timing issues that cause PHP extension compilation to hang
+   - Limited memory allocation during compilation phase
+   - CPU throttling affecting compilation processes
+   - Network timeouts when downloading extension source code
 
-2. **Suboptimal Docker Layer Caching**: Dockerfile tidak mengoptimalkan layer caching untuk Node.js dependencies
-   - Package.json dan package-lock.json di-copy bersamaan dengan aplikasi
-   - Setiap perubahan kode memicu rebuild dependencies
+2. **PHP Extension Compilation Complexity**: Manual compilation of PDO extensions involves multiple system dependencies and can be resource-intensive
+   - Requires development headers and build tools
+   - Complex dependency resolution for MySQL client libraries
+   - Potential conflicts between system packages
 
-3. **Environment Configuration Issues**: Konfigurasi production mungkin berbeda dengan development
-   - Environment variables untuk database atau session mungkin tidak sesuai
-   - APP_KEY atau session driver mungkin tidak dikonfigurasi dengan benar
+3. **Railway Platform Optimization**: Railway's native Nixpacks system is specifically optimized for the platform and avoids compilation issues
+   - Pre-compiled packages eliminate build-time compilation
+   - Better resource management and timeout handling
+   - Native integration with Railway's infrastructure
 
-4. **Authentication Guard Configuration**: Multi-guard authentication mungkin tidak berfungsi di production
-   - Session storage atau cookie configuration berbeda di production
-   - Database connection untuk authentication mungkin bermasalah
-
-5. **Database Seeding Issues**: Data admin atau siswa mungkin tidak ter-seed dengan benar di production
-   - Default admin account mungkin tidak dibuat
-   - Password hashing mungkin bermasalah di environment production
+4. **Build Process Inefficiency**: Current Dockerfile approach lacks proper timeout protection and error handling
+   - No timeout limits on compilation commands
+   - Missing retry logic for failed operations
+   - Insufficient logging for debugging hang conditions
 
 ## Correctness Properties
 
-Property 1: Bug Condition - Successful Deployment and Authentication
+Property 1: Bug Condition - Successful Deployment Completion
 
-_For any_ deployment attempt where the Docker build process runs and authentication attempts are made, the fixed system SHALL successfully complete the Docker build without file not found errors, allow student login with valid NISN credentials, allow admin login with valid email credentials, and enable admin access to student data.
+_For any_ deployment trigger where Railway attempts to deploy the Laravel application, the fixed deployment process SHALL complete successfully within 10 minutes, with all PHP extensions available and the application fully operational.
 
-**Validates: Requirements 2.1, 2.2, 2.5, 2.6**
+**Validates: Requirements 2.1, 2.2, 2.3, 2.4**
 
-Property 2: Preservation - Existing Application Functionality
+Property 2: Preservation - Application Functionality Unchanged
 
-_For any_ application functionality that does not involve Docker deployment or authentication login processes, the fixed system SHALL produce exactly the same behavior as the original system, preserving all E-Presensi features, database operations, and user interface interactions.
+_For any_ application functionality that was working before the deployment fix (authentication, database operations, face recognition, static assets), the deployed application SHALL continue to provide exactly the same behavior and performance characteristics.
 
-**Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8**
+**Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5**
 
 ## Fix Implementation
 
 ### Changes Required
 
-Berdasarkan analisis root cause, perbaikan yang diperlukan:
+Assuming our root cause analysis is correct:
 
-**File**: `Dockerfile`
+**File**: `nixpacks.toml`
 
-**Specific Changes**:
-1. **Handle Missing package-lock.json**: Modifikasi COPY command untuk menangani ketiadaan package-lock.json
-   - Gunakan conditional copy atau generate package-lock.json otomatis
-   - Fallback ke `npm install` jika `npm ci` gagal
-
-2. **Optimize Docker Layer Caching**: Pisahkan copy package.json dan install dependencies
-   - Copy package.json terlebih dahulu sebelum copy seluruh aplikasi
-   - Install dependencies dalam layer terpisah untuk caching yang lebih baik
-
-3. **Improve Build Reliability**: Tambahkan error handling dan cleanup
-   - Set proper working directory dan permissions
-   - Cleanup npm cache setelah install
-
-**File**: `render-start.sh`
+**Function**: Railway build configuration
 
 **Specific Changes**:
-4. **Enhanced Environment Setup**: Tambahkan validasi environment variables
-   - Pastikan APP_KEY ter-generate dengan benar
-   - Validasi database connection sebelum migration
+1. **Switch to Nixpacks Build System**: Replace Docker-based compilation with Railway's native Nixpacks
+   - Use pre-compiled PHP 8.2 with all required extensions from nixpkgs
+   - Eliminate manual extension compilation that causes hangs
+   - Leverage Railway's optimized build environment
 
-5. **Authentication Setup**: Pastikan data admin dan siswa ter-seed dengan benar
-   - Verifikasi admin default account dibuat
-   - Pastikan password hashing konsisten
+2. **Pre-compiled PHP Extensions**: Specify all required extensions as nixpkgs packages
+   - `php82Extensions.pdo` and `php82Extensions.pdo_mysql` for database connectivity
+   - All other extensions (mbstring, xml, curl, zip, gd, etc.) as pre-built packages
+   - Ensure version compatibility with Laravel requirements
 
-**File**: `config/session.php` (jika diperlukan)
+3. **Optimized Build Phases**: Structure build process with clear phases and error handling
+   - Setup phase: Install all system dependencies and PHP extensions
+   - Install phase: Handle Node.js dependencies with conditional logic
+   - Build phase: Install PHP dependencies with optimization flags
+   - Start phase: Use existing railway-start.sh script
+
+4. **Conditional Dependency Installation**: Implement robust logic for npm package management
+   - Check for package-lock.json existence and validity
+   - Use npm ci for reproducible builds when lock file exists
+   - Fall back to npm install with lock file generation when needed
+   - Add proper error handling and logging
+
+5. **Build Process Monitoring**: Add comprehensive logging and timeout protection
+   - Clear progress indicators for each build phase
+   - Timeout protection for long-running operations
+   - Graceful error handling with meaningful messages
+   - Retry logic for transient failures
+
+**File**: `Dockerfile` → `Dockerfile.backup`
+
+**Function**: Backup original Docker configuration
 
 **Specific Changes**:
-6. **Session Configuration**: Pastikan session driver dan cookie settings sesuai untuk production
-   - Konfigurasi session lifetime dan security settings
-   - Pastikan session storage path dapat diakses
+1. **Rename Existing Dockerfile**: Move current Dockerfile to Dockerfile.backup to preserve it
+   - Maintain original configuration as fallback option
+   - Prevent Railway from using Docker build system
+   - Keep timeout protection and retry logic for future reference
+
+2. **Update .railwayignore**: Ensure Railway ignores the backup Dockerfile
+   - Add Dockerfile.backup to ignore list
+   - Optimize build by excluding unnecessary files
+   - Reduce build context size for faster uploads
+
+**File**: `.railwayignore`
+
+**Function**: Railway build optimization
+
+**Specific Changes**:
+1. **Exclude Development Files**: Ignore files not needed for production deployment
+   - Development dependencies and cache files
+   - Local configuration and temporary files
+   - Documentation and backup files
+
+2. **Optimize Build Context**: Reduce upload time and build size
+   - Exclude node_modules (will be rebuilt)
+   - Ignore local database files and logs
+   - Skip version control and IDE files
 
 ## Testing Strategy
 
 ### Validation Approach
 
-Testing strategy menggunakan pendekatan dua fase: pertama, surface counterexamples yang menunjukkan bug pada kode yang belum diperbaiki, kemudian verifikasi bahwa perbaikan bekerja dengan benar dan mempertahankan perilaku yang ada.
+The testing strategy follows a two-phase approach: first, surface counterexamples that demonstrate the bug on unfixed code, then verify the fix works correctly and preserves existing behavior.
 
 ### Exploratory Bug Condition Checking
 
-**Goal**: Surface counterexamples yang menunjukkan bug SEBELUM implementasi perbaikan. Konfirmasi atau bantah analisis root cause. Jika dibantah, kita perlu re-hipotesis.
+**Goal**: Surface counterexamples that demonstrate the bug BEFORE implementing the fix. Confirm or refute the root cause analysis. If we refute, we will need to re-hypothesize.
 
-**Test Plan**: Tulis test yang mensimulasikan Docker build process dan authentication attempts. Jalankan test ini pada kode yang BELUM DIPERBAIKI untuk mengamati kegagalan dan memahami root cause.
+**Test Plan**: Attempt deployment using the current Docker-based configuration and monitor for hang conditions. Document exact failure points and resource usage patterns. Run these tests on the UNFIXED configuration to observe failures and understand the root cause.
 
 **Test Cases**:
-1. **Docker Build Test**: Simulasi Docker build dengan package-lock.json yang hilang (akan gagal pada kode yang belum diperbaiki)
-2. **Student Login Test**: Simulasi login siswa dengan NISN valid di production environment (akan gagal pada kode yang belum diperbaiki)
-3. **Admin Login Test**: Simulasi login admin dengan email valid di production environment (akan gagal pada kode yang belum diperbaiki)
-4. **Admin Data Access Test**: Simulasi akses data siswa oleh admin setelah login berhasil (mungkin gagal pada kode yang belum diperbaiki)
+1. **Docker Build Hang Test**: Deploy current configuration and monitor PHP extension compilation phase (will fail on unfixed code)
+2. **Resource Usage Monitoring**: Track memory and CPU usage during compilation to identify resource exhaustion (will show issues on unfixed code)
+3. **Timeout Behavior Test**: Observe build behavior after 15+ minutes to confirm hang condition (will demonstrate hang on unfixed code)
+4. **Multiple Deployment Attempts**: Test consistency of failure across multiple deployment triggers (will show consistent failure pattern on unfixed code)
 
 **Expected Counterexamples**:
-- Docker build stops dengan error "package-lock.json not found"
-- Student authentication fails dengan guard 'siswa' tidak berfungsi
-- Admin authentication fails atau tidak dapat mengakses SiswaController
-- Possible causes: missing lock file, environment config, guard configuration, database seeding issues
+- Build process hangs indefinitely at `docker-php-ext-install pdo pdo_mysql` step
+- Possible causes: resource constraints, compilation complexity, platform limitations, missing timeout protection
 
 ### Fix Checking
 
-**Goal**: Verifikasi bahwa untuk semua input dimana bug condition berlaku, fungsi yang diperbaiki menghasilkan perilaku yang diharapkan.
+**Goal**: Verify that for all inputs where the bug condition holds, the fixed function produces the expected behavior.
 
 **Pseudocode:**
 ```
-FOR ALL input WHERE isBugCondition(input) DO
-  result := fixedDeploymentAndAuth(input)
-  ASSERT expectedBehavior(result)
+FOR ALL deploymentTrigger WHERE isBugCondition(deploymentTrigger) DO
+  result := nixpacksDeployment(deploymentTrigger)
+  ASSERT successfulDeployment(result) AND deploymentTime(result) < 10_MINUTES
 END FOR
 ```
 
 ### Preservation Checking
 
-**Goal**: Verifikasi bahwa untuk semua input dimana bug condition TIDAK berlaku, fungsi yang diperbaiki menghasilkan hasil yang sama dengan fungsi asli.
+**Goal**: Verify that for all inputs where the bug condition does NOT hold, the fixed function produces the same result as the original function.
 
 **Pseudocode:**
 ```
-FOR ALL input WHERE NOT isBugCondition(input) DO
-  ASSERT originalApplication(input) = fixedApplication(input)
+FOR ALL applicationFunction WHERE NOT isBugCondition(applicationFunction) DO
+  ASSERT originalBehavior(applicationFunction) = fixedBehavior(applicationFunction)
 END FOR
 ```
 
-**Testing Approach**: Property-based testing direkomendasikan untuk preservation checking karena:
-- Menghasilkan banyak test case secara otomatis di seluruh domain input
-- Menangkap edge case yang mungkin terlewat oleh unit test manual
-- Memberikan jaminan kuat bahwa perilaku tidak berubah untuk semua input non-buggy
+**Testing Approach**: Property-based testing is recommended for preservation checking because:
+- It generates many test cases automatically across the input domain
+- It catches edge cases that manual unit tests might miss
+- It provides strong guarantees that behavior is unchanged for all non-deployment functionality
 
-**Test Plan**: Amati perilaku pada kode BELUM DIPERBAIKI terlebih dahulu untuk operasi aplikasi normal, kemudian tulis property-based test yang menangkap perilaku tersebut.
+**Test Plan**: Observe behavior on UNFIXED deployed application first for all core functionality, then write property-based tests capturing that behavior.
 
 **Test Cases**:
-1. **Application Feature Preservation**: Verifikasi bahwa semua fitur E-Presensi (CRUD siswa, presensi, laporan) tetap berfungsi setelah perbaikan
-2. **Database Operation Preservation**: Verifikasi bahwa operasi database dan migration tetap berjalan dengan benar
-3. **Static Asset Preservation**: Verifikasi bahwa CSS, JS, dan image assets tetap di-serve dengan benar
-4. **UI Navigation Preservation**: Verifikasi bahwa navigasi antar halaman tetap berfungsi normal
+1. **Authentication Preservation**: Verify admin and student login functionality continues to work after deployment fix
+2. **Database Operations Preservation**: Verify all CRUD operations, migrations, and seeding work correctly after fix
+3. **Static Asset Preservation**: Verify CSS, JavaScript, and image loading continues to work without performance degradation
+4. **Face Recognition Preservation**: Verify face recognition functionality continues to work with same accuracy and performance
 
 ### Unit Tests
 
-- Test Docker build process dengan dan tanpa package-lock.json
-- Test authentication untuk kedua guard (siswa dan user) dengan credentials valid dan invalid
-- Test admin access ke SiswaController methods (index, store, edit, update, delete)
-- Test database seeding untuk admin dan siswa accounts
+- Test nixpacks.toml configuration parsing and validation
+- Test conditional npm install logic with various package.json scenarios
+- Test PHP extension availability after nixpacks build
+- Test railway-start.sh script execution with all required environment variables
 
 ### Property-Based Tests
 
-- Generate random deployment configurations dan verifikasi build berhasil
-- Generate random authentication attempts dan verifikasi login behavior yang benar
-- Generate random application usage patterns dan verifikasi preservation of existing functionality
-- Test bahwa semua non-authentication inputs tetap berfungsi di berbagai skenario
+- Generate random deployment scenarios and verify successful completion within time limits
+- Generate random application usage patterns and verify preservation of functionality
+- Test that all database operations continue to work across many different data scenarios
+- Verify static asset serving performance across various file types and sizes
 
 ### Integration Tests
 
-- Test full deployment flow dari Docker build hingga aplikasi running
-- Test complete authentication flow untuk siswa dan admin
-- Test admin workflow dari login hingga akses data siswa
-- Test bahwa visual feedback dan UI responses berfungsi dengan benar setelah deployment
+- Test complete deployment pipeline from GitHub push to live application
+- Test application startup sequence including database migrations and seeding
+- Test that all application features work correctly in the deployed Railway environment
+- Test rollback procedures and deployment monitoring capabilities

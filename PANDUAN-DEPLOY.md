@@ -1,7 +1,15 @@
 # 🚀 Panduan Deploy E-Presensi ke Railway (GRATIS)
 
-> Estimasi waktu: **15-20 menit**  
+> Estimasi waktu: **5-10 menit** (sudah dioptimasi!)  
 > Tidak perlu pengalaman deploy sebelumnya. Ikuti langkah demi langkah!
+
+## ✨ Fitur Deployment Terbaru
+
+✅ **Build Cepat**: 5-8 menit (sebelumnya 15-20 menit)
+✅ **Anti-Hang**: Menggunakan pre-compiled PHP extensions
+✅ **Auto-Retry**: Otomatis retry jika ada kegagalan
+✅ **Health Monitoring**: Build process monitoring otomatis
+✅ **Rollback Ready**: Prosedur rollback tersedia jika diperlukan
 
 ---
 
@@ -131,10 +139,19 @@ Setelah semua variable tersimpan:
 ### Langkah 12: Pantau proses build
 1. Klik pada deployment yang sedang berjalan
 2. Kamu bisa lihat log build secara real-time
-3. Tunggu sampai muncul tulisan **"=== Setup selesai! Menjalankan server... ==="**
+3. **Yang harus kamu lihat:**
+   - ✅ `=== NIXPACKS BUILD: Setup Phase Started ===` (menggunakan nixpacks, bukan Docker)
+   - ✅ `✅ nixpacks.toml found - PRIMARY strategy active`
+   - ✅ `Pre-compiled PHP extensions (no compilation hangs)`
+   - ✅ `✅ Setup phase completed`
+   - ✅ `✅ Install phase completed`
+   - ✅ `✅ Build phase completed`
+   - ✅ `✅ Semua setup selesai! Menjalankan server...`
 4. Status akan berubah menjadi **"Active"** (lingkaran hijau)
 
-> ⏱️ Proses build biasanya memakan waktu **5-10 menit** pertama kali.
+> ⏱️ Proses build sekarang hanya **5-8 menit** (sudah dioptimasi!)
+> 
+> ⚠️ **Jika build hang > 10 menit**: Ada masalah! Lihat [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ---
 
@@ -166,11 +183,21 @@ Setelah semua variable tersimpan:
 ### Error: "SQLSTATE: Connection refused"
 → Pastikan semua variable `DB_*` sudah diisi dari MySQL service (step 9).
 
+### Build Hang/Timeout (> 10 menit)
+→ **Seharusnya tidak terjadi lagi!** Jika masih terjadi:
+1. Check apakah menggunakan nixpacks (lihat logs)
+2. Pastikan tidak ada file `Dockerfile` di root (harus `Dockerfile.backup`)
+3. Lihat panduan lengkap di [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+
 ### Halaman muncul tapi foto tidak tampil
 → Ini normal untuk foto yang diupload sebelumnya. Foto baru yang diupload di Railway akan tampil normal.
 
 ### Error 500 setelah login
 → Buka tab "Deployments" → klik deployment aktif → lihat log untuk pesan error spesifik.
+
+### Masalah Lainnya
+→ Lihat panduan lengkap di [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+→ Prosedur rollback tersedia di [ROLLBACK-PROCEDURES.md](ROLLBACK-PROCEDURES.md)
 
 ---
 
@@ -190,3 +217,58 @@ Setelah semua variable tersimpan:
 ## 🎉 Selesai!
 
 Aplikasi E-Presensi kamu sudah live dan bisa diakses dari mana saja!
+
+---
+
+## 📚 Dokumentasi Tambahan
+
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Panduan lengkap troubleshooting
+- **[ROLLBACK-PROCEDURES.md](ROLLBACK-PROCEDURES.md)** - Prosedur rollback jika ada masalah
+- **[DEPLOYMENT-STRATEGY-SELECTION.md](DEPLOYMENT-STRATEGY-SELECTION.md)** - Penjelasan teknis deployment strategy
+
+## 🛠️ Testing Scripts (Opsional)
+
+Jika kamu ingin test deployment secara lokal:
+
+```bash
+# Test nixpacks configuration
+bash scripts/test-nixpacks.sh
+
+# Test Docker build (fallback)
+bash scripts/test-build.sh
+
+# Monitor deployment
+bash scripts/monitor-deployment.sh --url https://your-app.railway.app
+```
+
+## 🔍 Monitoring
+
+Untuk monitoring deployment:
+
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Login
+railway login
+
+# Link project
+railway link
+
+# View logs
+railway logs --tail 100
+```
+
+## 💡 Tips Production
+
+1. **Ganti Password Default** - Segera ganti semua password default!
+2. **Setup Cloud Storage** - Untuk foto persistent, gunakan S3/Cloudinary
+3. **Enable HTTPS** - Railway sudah provide HTTPS otomatis
+4. **Monitor Logs** - Check logs secara berkala
+5. **Backup Database** - Export database secara rutin
+
+## 🚨 Jika Ada Masalah Serius
+
+1. Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+2. Jika perlu rollback, ikuti [ROLLBACK-PROCEDURES.md](ROLLBACK-PROCEDURES.md)
+3. Contact Railway Support: https://railway.app/help

@@ -1,49 +1,39 @@
-# Dokumen Persyaratan Bugfix
+# Bugfix Requirements Document
 
-## Pendahuluan
+## Introduction
 
-Aplikasi Laravel E-Presensi gagal deploy di platform Railway karena file package-lock.json yang hilang dan masalah konfigurasi Docker build. Deployment gagal dalam hitungan detik selama proses Docker build, sehingga aplikasi tidak dapat di-deploy dengan sukses. Hal ini mempengaruhi kemampuan untuk deploy aplikasi ke production dan membuatnya tidak dapat diakses oleh pengguna.
+The Laravel application with face recognition functionality is experiencing recurring deployment failures on Railway. The deployment process gets stuck during PHP extension compilation, specifically during the compilation of PDO and PDO MySQL extensions. This causes the deployment to hang indefinitely and never complete successfully, preventing the application from being accessible to users.
 
-## Analisis Bug
+## Bug Analysis
 
-### Perilaku Saat Ini (Cacat)
+### Current Behavior (Defect)
 
-1.1 KETIKA Railway mencoba build Docker image MAKA build gagal dengan error "failed to calculate checksum of ref: '/package-lock.json': not found"
+1.1 WHEN Railway attempts to deploy the application THEN the deployment process hangs during PHP extension compilation and never completes
 
-1.2 KETIKA Dockerfile mencoba copy package-lock.json pada build step 7/13 MAKA proses build berhenti karena file tidak ada di project root
+1.2 WHEN the Docker build process reaches PHP extension compilation (PDO, PDO MySQL) THEN the build process becomes unresponsive and times out
 
-1.3 KETIKA proses Docker build berjalan dalam waktu lama MAKA build dibatalkan dengan exit code 137 karena timeout atau keterbatasan resource
+1.3 WHEN users push changes to the GitHub repository THEN Railway auto-redeploy fails consistently due to the compilation hang
 
-1.4 KETIKA menggunakan npm dengan package.json saja (tanpa package-lock.json) MAKA build menjadi tidak reliable dan bisa install versi dependency yang berbeda
+1.4 WHEN the deployment logs are examined THEN they show the build process stopping at PHP extension compilation without error messages or completion
 
-### Perilaku yang Diharapkan (Benar)
+### Expected Behavior (Correct)
 
-2.1 KETIKA Railway mencoba build Docker image MAKA build HARUS berhasil tanpa error file not found
+2.1 WHEN Railway attempts to deploy the application THEN the deployment process SHALL complete successfully within reasonable time limits
 
-2.2 KETIKA Dockerfile memproses Node.js dependencies MAKA HARUS menangani ketiadaan package-lock.json dengan baik atau generate otomatis
+2.2 WHEN the Docker build process reaches PHP extension compilation THEN the build process SHALL complete the compilation and proceed to the next steps
 
-2.3 KETIKA proses Docker build berjalan MAKA HARUS selesai dalam batas waktu yang wajar tanpa dibatalkan
+2.3 WHEN users push changes to the GitHub repository THEN Railway auto-redeploy SHALL complete successfully and make the application accessible
 
-2.4 KETIKA install Node.js dependencies MAKA build HARUS menggunakan versi dependency yang konsisten dan selesai dengan reliable
+2.4 WHEN the deployment logs are examined THEN they SHALL show successful completion of all build steps including PHP extension compilation
 
-2.5 KETIKA aplikasi berhasil deploy MAKA pengguna HARUS bisa login ke dashboard siswa tanpa error
+### Unchanged Behavior (Regression Prevention)
 
-2.6 KETIKA admin login ke dashboard MAKA admin HARUS bisa mengakses dan melihat data siswa dengan lengkap
+3.1 WHEN the application is successfully deployed THEN the Laravel application SHALL CONTINUE TO function with all existing features (student management, attendance tracking, face recognition)
 
-### Perilaku yang Tidak Berubah (Pencegahan Regresi)
+3.2 WHEN users access the deployed application THEN authentication for both students and admins SHALL CONTINUE TO work correctly
 
-3.1 KETIKA aplikasi berhasil deploy MAKA HARUS TETAP menjalankan aplikasi Laravel dengan semua fungsi yang ada
+3.3 WHEN the application handles database operations THEN all existing database functionality SHALL CONTINUE TO work without issues
 
-3.2 KETIKA Docker container start MAKA HARUS TETAP menjalankan script railway-start.sh dengan benar
+3.4 WHEN static assets are served THEN CSS, JavaScript, and image files SHALL CONTINUE TO load properly
 
-3.3 KETIKA aplikasi connect ke database MAKA HARUS TETAP menggunakan konfigurasi database dan environment variables yang ada
-
-3.4 KETIKA pengguna mengakses aplikasi yang sudah deploy MAKA mereka HARUS TETAP melihat interface dan fitur E-Presensi yang sama
-
-3.5 KETIKA build menggunakan PHP dependencies yang ada MAKA HARUS TETAP install dengan benar via Composer
-
-3.6 KETIKA aplikasi serve static assets MAKA HARUS TETAP build dan serve dengan benar setelah npm build selesai
-
-3.7 KETIKA siswa login dengan NISN dan password MAKA HARUS TETAP bisa akses dashboard siswa seperti sebelumnya
-
-3.8 KETIKA admin login dengan email dan password MAKA HARUS TETAP bisa akses panel admin dan kelola data siswa
+3.5 WHEN the face recognition functionality is used THEN it SHALL CONTINUE TO work as expected without performance degradation

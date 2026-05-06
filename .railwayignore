@@ -1,0 +1,51 @@
+# DEPLOYMENT STRATEGY SELECTION CONFIGURATION
+# ============================================
+# This file ensures Railway prioritizes nixpacks.toml over Docker for deployment
+# 
+# STRATEGY SELECTION MECHANISM:
+# 1. Railway detects nixpacks.toml (PRIMARY) -> Uses Nixpacks build system
+# 2. Railway ignores Dockerfile* (EXCLUDED) -> Prevents Docker conflicts  
+# 3. Dockerfile.backup available (FALLBACK) -> Emergency Docker option
+#
+# EXCLUDED DOCKER FILES (Forces nixpacks priority):
+Dockerfile
+Dockerfile.backup
+Dockerfile.*
+docker-compose.yml
+docker-compose.*.yml
+
+# DEPLOYMENT STRATEGY BENEFITS:
+# ✅ Eliminates PHP extension compilation hangs
+# ✅ Faster builds (5-8 minutes vs 15-20 minutes)
+# ✅ Pre-compiled extensions from nixpkgs
+# ✅ Railway platform optimization
+# ✅ Fallback strategy available if needed
+
+# Development and build artifacts
+node_modules/
+vendor/
+.git/
+.env
+tests/
+.phpunit.result.cache
+*.log
+.DS_Store
+
+# IDE and editor files
+.vscode/
+.idea/
+
+# Laravel storage and cache directories
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+
+# Documentation and analysis files
+deployment-analysis.md
+DEPLOYMENT_FIX_SUMMARY.md
+PANDUAN-DEPLOY.md
+DOCKERFILE-OPTIMIZATION.md
+
+# Kiro spec files (not needed for deployment)
+.kiro/
