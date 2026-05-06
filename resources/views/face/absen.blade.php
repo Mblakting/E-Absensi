@@ -144,7 +144,9 @@
 <div style="padding: 14px 12px 0;">
     <div style="background:#fff3cd; border-radius:16px; padding:16px; border-left:4px solid #f9a825;">
         <div class="d-flex align-items-start gap-3">
-            <div style="font-size:2rem; flex-shrink:0;">??</div>
+            <div style="font-size:2rem; flex-shrink:0;">
+                <ion-icon name="alert-circle-outline" style="color:#f9a825;"></ion-icon>
+            </div>
             <div>
                 <div style="font-weight:700; color:#856404; font-size:.9rem;">Wajah Belum Terdaftar</div>
                 <div style="font-size:.78rem; color:#856404; margin-top:4px; line-height:1.5;">
@@ -160,7 +162,9 @@
 {{-- -- Sudah selesai absen -- --}}
 <div style="padding: 14px 12px 0;">
     <div class="done-card">
-        <div style="font-size:3rem; margin-bottom:8px;">??</div>
+        <div style="font-size:3rem; margin-bottom:8px;">
+            <ion-icon name="checkmark-circle" style="color:#fff;"></ion-icon>
+        </div>
         <div style="font-size:1.1rem; font-weight:800; margin-bottom:4px;">Presensi Hari Ini Selesai!</div>
         <div style="font-size:.82rem; opacity:.9; margin-bottom:16px;">Kamu sudah absen masuk dan pulang hari ini.</div>
         <div class="d-flex justify-content-center gap-4">
@@ -221,7 +225,9 @@
                      src="{{ $fotoSiswa }}"
                      alt="Foto Siswa"
                      onerror="this.src='{{ asset('assets/img/kosong.jpg') }}'">
-                <div class="verified-badge">?</div>
+                <div class="verified-badge">
+                    <ion-icon name="checkmark" style="font-size:11px;"></ion-icon>
+                </div>
             </div>
             {{-- Info siswa -- --}}
             <div style="flex:1; min-width:0;">
@@ -307,7 +313,7 @@ if (!IS_DONE) {
 
                 mapInstance = L.map('map').setView([pos.coords.latitude, pos.coords.longitude], 16);
                 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, attribution: '� OpenStreetMap'
+                    maxZoom: 19, attribution: '� OpenStreetMap'
                 }).addTo(mapInstance);
                 L.marker([pos.coords.latitude, pos.coords.longitude])
                     .addTo(mapInstance)
@@ -355,11 +361,17 @@ if (!IS_DONE) {
             const myFace = knownDescriptors.find(d => d.nisn === NISN_LOGIN);
 
             if (myFace) {
+                // HANYA simpan wajah siswa yang login, buang yang lain
+                knownDescriptors = [myFace];
+                
                 ms.innerHTML = '<div class="d-flex align-items-center gap-2" style="color:#065f46;">' +
                     '<ion-icon name="checkmark-circle-outline" style="font-size:1.1rem;"></ion-icon>' +
                     '<span>Sistem siap &bull; Wajah kamu <strong>sudah terdaftar</strong></span></div>';
                 ms.style.background = '#d1fae5';
             } else {
+                // Wajah belum terdaftar - kosongkan array agar tidak ada yang dikenali
+                knownDescriptors = [];
+                
                 ms.innerHTML = '<div class="d-flex align-items-center gap-2" style="color:#92400e;">' +
                     '<ion-icon name="warning-outline" style="font-size:1.1rem;"></ion-icon>' +
                     '<span>Wajah kamu <strong>belum terdaftar</strong> di sistem</span></div>';
@@ -500,7 +512,7 @@ if (!IS_DONE) {
                 overlayCtx.fillRect(bx, by - 28, labelW, 26);
                 overlayCtx.fillStyle = '#fff';
                 overlayCtx.font = 'bold 13px Inter, sans-serif';
-                overlayCtx.fillText('? ' + match.nama_lengkap, bx + 6, by - 9);
+                overlayCtx.fillText('✓ ' + match.nama_lengkap, bx + 6, by - 9);
 
             } else {
                 currentMatch = null;
@@ -517,7 +529,7 @@ if (!IS_DONE) {
                 overlayCtx.fillRect(bx, by - 28, 150, 26);
                 overlayCtx.fillStyle = '#fff';
                 overlayCtx.font = 'bold 13px Inter, sans-serif';
-                overlayCtx.fillText('? Tidak Dikenali', bx + 6, by - 9);
+                overlayCtx.fillText('✗ Tidak Dikenali', bx + 6, by - 9);
             }
         }, 400);
     }
@@ -546,7 +558,9 @@ if (!IS_DONE) {
         fill.style.background = conf >= 70 ? '#2fb344' : conf >= 50 ? '#f9a825' : '#ea4335';
 
         document.getElementById('confText').textContent = 'Kecocokan: ' + conf + '%';
-        document.getElementById('matchStatusIcon').textContent = conf >= 70 ? '?' : '??';
+        document.getElementById('matchStatusIcon').innerHTML = conf >= 70 
+            ? '<ion-icon name="checkmark-circle" style="color:#2fb344;"></ion-icon>' 
+            : '<ion-icon name="warning" style="color:#f9a825;"></ion-icon>';
 
         // Border warna sesuai confidence
         document.querySelector('.match-avatar-wrap img').style.borderColor =
