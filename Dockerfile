@@ -27,11 +27,31 @@ COPY composer.json composer.lock ./
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-# Copy package.json
-COPY package.json package-lock.json ./
+# Copy package.json first for better layer caching
+COPY package.json ./
 
-# Install Node dependencies and build assets
-RUN npm ci && npm run build
+# Copy package-lock.json if it exists (using wildcard to avoid failure if missing)
+COPY package-lock.json* ./
+
+# Install Node dependencies with fallback logic and error handling
+RUN set -e; \
+    if [ -f package-lock.json ] && [ -s package-lock.json ]; then \
+        echo "Found package-lock.json, using npm ci for reproducible builds" && \
+        npm ci --no-audit --no-fund --prefer-offline; \
+    else \
+        echo "No package-lock.json found, using npm install and generating lock file" && \
+        npm install --no-audit --no-fund --prefer-offline && \
+        echo "Generated package-lock.json for future builds"; \
+    fi
+
+# Build assets with error handling
+RUN set -e; \
+    echo "Building frontend assets..." && \
+    npm run build && \
+    echo "Frontend build completed successfully"
+
+# Clean npm cache to reduce image size
+RUN npm cache clean --force
 
 # Copy the rest of the application
 COPY . .
@@ -44,9 +64,9 @@ RUN chmod -R 775 storage bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
 # Copy and set startup script
-COPY render-start.sh /render-start.sh
-RUN chmod +x /render-start.sh
+COPY railway-start.sh /railway-start.sh
+RUN chmod +x /railway-start.sh
 
 EXPOSE 8080
 
-CMD ["/render-start.sh"]
+CMD ["/railway-start.sh"]
