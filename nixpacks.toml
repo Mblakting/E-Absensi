@@ -11,6 +11,7 @@ nixPkgs = [
     "php82Extensions.bcmath",
     "php82Extensions.pcntl",
     "php82Extensions.exif",
+    "php82Packages.composer",
     "nodejs_20",
     "nodePackages.npm",
     "git",
