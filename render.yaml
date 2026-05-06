@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: e-presensi
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: APP_NAME
+        value: E-Presensi
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        fromService:
+          type: web
+          name: e-presensi
+          property: host
+      - key: APP_LOCALE
+        value: id
+      - key: APP_FALLBACK_LOCALE
+        value: id
+      - key: LOG_LEVEL
+        value: error
+      - key: SESSION_DRIVER
+        value: file
+      - key: SESSION_LIFETIME
+        value: "120"
+      - key: FILESYSTEM_DISK
+        value: public
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: CACHE_STORE
+        value: file
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        value: be42gnkbwhgjvshimgot-mysql.services.clever-cloud.com
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_DATABASE
+        value: be42gnkbwhgjvshimgot
+      - key: DB_USERNAME
+        value: uyz0abfedtwzvtdq
+      - key: DB_PASSWORD
+        value: GkF527te5ppUMU263zsy
+      - key: SCHOOL_LATITUDE
+        value: "-7.671325"
+      - key: SCHOOL_LONGITUDE
+        value: "110.589607"
+      - key: SCHOOL_RADIUS
+        value: "500"
+      - key: SCHOOL_NAME
+        value: SMK Negeri 2 Klaten
