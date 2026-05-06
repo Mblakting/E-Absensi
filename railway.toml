@@ -1,8 +1,5 @@
 [build]
-builder = "railpack"
-
-[build.environment]
-RAILPACK_NO_ARTISAN_OPTIMIZE = "true"
+builder = "nixpacks"
 
 [deploy]
 startCommand = "bash railway-start.sh"
