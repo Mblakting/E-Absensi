@@ -90,12 +90,12 @@
             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
         L.marker([lat, lng]).addTo(map);
-        // Lingkaran area sekolah
-        L.circle([-7.671325, 110.589607], {
+        // Lingkaran area sekolah (dari konfigurasi)
+        L.circle([{{ config('school.latitude') }}, {{ config('school.longitude') }}], {
             color: 'green',
             fillColor: 'green',
             fillOpacity: 0.3,
-            radius: 200
+            radius: {{ config('school.radius_meter') }}
         }).addTo(map);
     }
 

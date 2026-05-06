@@ -313,13 +313,13 @@ if (!IS_DONE) {
 
                 mapInstance = L.map('map').setView([pos.coords.latitude, pos.coords.longitude], 16);
                 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19, attribution: '� OpenStreetMap'
+                    maxZoom: 19, attribution: '© OpenStreetMap'
                 }).addTo(mapInstance);
                 L.marker([pos.coords.latitude, pos.coords.longitude])
                     .addTo(mapInstance)
                     .bindPopup('Lokasi kamu').openPopup();
-                L.circle([-7.671325, 110.589607], {
-                    color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.12, radius: 200
+                L.circle([{{ config('school.latitude') }}, {{ config('school.longitude') }}], {
+                    color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.12, radius: {{ config('school.radius_meter') }}
                 }).addTo(mapInstance).bindPopup('Area Sekolah');
             },
             err => {

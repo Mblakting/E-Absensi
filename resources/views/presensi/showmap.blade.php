@@ -17,11 +17,11 @@
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
     var marker = L.marker([latitude, longitude]).addTo(map);
-        var circle = L.circle([-7.671325, 110.589607], {
+        var circle = L.circle([{{ config('school.latitude') }}, {{ config('school.longitude') }}], {
             color: 'green',
             fillColor: 'green',
             fillOpacity: 0.5,
-            radius: 100
+            radius: {{ config('school.radius_meter') }}
         }).addTo(map);
     var popup = L.popup()
     .setLatLng([latitude, longitude])
