@@ -73,7 +73,6 @@ nixPkgs = [
     # Additional Laravel-required extensions
     "php82Extensions.session",
     "php82Extensions.filter",
-    "php82Extensions.hash",
     "php82Extensions.json",
     "php82Extensions.iconv",
     
