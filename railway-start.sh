@@ -7,9 +7,15 @@ echo "================================================"
 
 PORT=${PORT:-8080}
 
-# 1. Hapus SEMUA cache lama (penting!)
+# 1. Regenerasi autoloader Composer
 echo ""
-echo "[1/5] Membersihkan cache lama..."
+echo "[1/6] Regenerasi autoloader Composer..."
+composer dump-autoload --optimize
+echo "      Autoloader selesai!"
+
+# 2. Hapus SEMUA cache lama (penting!)
+echo ""
+echo "[2/6] Membersihkan cache lama..."
 php artisan config:clear 2>/dev/null || true
 php artisan route:clear 2>/dev/null || true
 php artisan view:clear 2>/dev/null || true
@@ -17,27 +23,27 @@ php artisan cache:clear 2>/dev/null || true
 php artisan clear-compiled 2>/dev/null || true
 echo "      Cache bersih!"
 
-# 2. Jalankan migrasi database
+# 3. Jalankan migrasi database
 echo ""
-echo "[2/5] Menjalankan migrasi database..."
+echo "[3/6] Menjalankan migrasi database..."
 php artisan migrate --force
 echo "      Migrasi selesai!"
 
-# 3. Seed data awal
+# 4. Seed data awal
 echo ""
-echo "[3/5] Mengisi data awal..."
+echo "[4/6] Mengisi data awal..."
 php artisan db:seed --force
 echo "      Seeding selesai!"
 
-# 4. Buat symlink storage
+# 5. Buat symlink storage
 echo ""
-echo "[4/5] Membuat storage symlink..."
+echo "[5/6] Membuat storage symlink..."
 php artisan storage:link --force 2>/dev/null || true
 echo "      Storage link selesai!"
 
-# 5. Set permission
+# 6. Set permission
 echo ""
-echo "[5/5] Set permission folder..."
+echo "[6/6] Set permission folder..."
 chmod -R 775 storage bootstrap/cache 2>/dev/null || true
 echo "      Permission selesai!"
 

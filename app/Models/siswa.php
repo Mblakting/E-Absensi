@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -46,15 +45,19 @@ class Siswa extends Authenticatable
         return $this->belongsTo(Jurusan::class, 'kode_jurusan', 'kode_jurusan');
     }
 
-    public function presensi()
-    {
-        return $this->hasMany(Presensi::class, 'nisn', 'nisn');
-    }
+    // NOTE: Presensi and PengajuanIzin models do not exist in this project.
+    // The application uses DB::table() queries directly instead of Eloquent models.
+    // These relationships are commented out to prevent "Class not found" errors.
+    
+    // public function presensi()
+    // {
+    //     return $this->hasMany(Presensi::class, 'nisn', 'nisn');
+    // }
 
-    public function pengajuanIzin()
-    {
-        return $this->hasMany(PengajuanIzin::class, 'nisn', 'nisn');
-    }
+    // public function pengajuanIzin()
+    // {
+    //     return $this->hasMany(PengajuanIzin::class, 'nisn', 'nisn');
+    // }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
