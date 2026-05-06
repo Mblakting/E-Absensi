@@ -29,11 +29,6 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        // Fix: pastikan auth providers pakai class yang benar
-        // (workaround untuk Railpack config cache serialization bug)
-        config([
-            'auth.providers.users.model'  => \App\Models\User::class,
-            'auth.providers.siswas.model' => \App\Models\Siswa::class,
-        ]);
+
     }
 }
