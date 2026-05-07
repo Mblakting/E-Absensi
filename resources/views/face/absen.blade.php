@@ -358,11 +358,26 @@ if (!IS_DONE) {
 
             // Cek apakah wajah siswa yang login ada di daftar
             const NISN_LOGIN = "{{ Auth::guard('siswa')->user()->nisn }}";
+            
+            // CRITICAL FIX: Konversi semua NISN ke string untuk memastikan perbandingan bekerja
+            knownDescriptors = knownDescriptors.map(d => ({
+                ...d,
+                nisn: String(d.nisn)  // Pastikan NISN adalah string
+            }));
+            
+            console.log('🔍 DEBUG - NISN Login:', NISN_LOGIN);
+            console.log('🔍 DEBUG - Total descriptors loaded:', count);
+            console.log('🔍 DEBUG - All NISN in database:', knownDescriptors.map(d => d.nisn));
+            
             const myFace = knownDescriptors.find(d => d.nisn === NISN_LOGIN);
+            
+            console.log('🔍 DEBUG - My face found:', myFace ? 'YES' : 'NO');
 
             if (myFace) {
                 // HANYA simpan wajah siswa yang login, buang yang lain
                 knownDescriptors = [myFace];
+                
+                console.log('✅ SECURITY - Filtered to only logged-in student. Remaining:', knownDescriptors.length);
                 
                 ms.innerHTML = '<div class="d-flex align-items-center gap-2" style="color:#065f46;">' +
                     '<ion-icon name="checkmark-circle-outline" style="font-size:1.1rem;"></ion-icon>' +
@@ -371,6 +386,8 @@ if (!IS_DONE) {
             } else {
                 // Wajah belum terdaftar - kosongkan array agar tidak ada yang dikenali
                 knownDescriptors = [];
+                
+                console.log('⚠️ WARNING - Face not registered. Cleared all descriptors.');
                 
                 ms.innerHTML = '<div class="d-flex align-items-center gap-2" style="color:#92400e;">' +
                     '<ion-icon name="warning-outline" style="font-size:1.1rem;"></ion-icon>' +
@@ -491,10 +508,41 @@ if (!IS_DONE) {
             });
 
             if (isMatch) {
+                // CRITICAL SECURITY CHECK: Pastikan NISN yang match adalah NISN yang login
+                const NISN_LOGIN = "{{ Auth::guard('siswa')->user()->nisn }}";
+                
+                console.log('🔒 SECURITY CHECK - Match NISN:', match.nisn, 'Login NISN:', NISN_LOGIN);
+                
+                if (String(match.nisn) !== String(NISN_LOGIN)) {
+                    console.error('❌ SECURITY VIOLATION - Matched face does not belong to logged-in user!');
+                    console.error('   Matched:', match.nisn, '(' + match.nama_lengkap + ')');
+                    console.error('   Expected:', NISN_LOGIN);
+                    
+                    // Treat as no match - security violation
+                    currentMatch = null;
+                    setStatusPill(
+                        '<ion-icon name="warning-outline" style="vertical-align:-2px;margin-right:4px;"></ion-icon> Wajah Tidak Cocok!',
+                        'rgba(234,67,53,.85)', '#fff'
+                    );
+                    document.getElementById('scanFrame').className = '';
+                    hideMatchCard();
+                    document.getElementById('btnAbsen').disabled = true;
+                    
+                    // Label di canvas
+                    overlayCtx.fillStyle = 'rgba(234,67,53,.85)';
+                    overlayCtx.fillRect(bx, by - 28, 180, 26);
+                    overlayCtx.fillStyle = '#fff';
+                    overlayCtx.font = 'bold 13px Inter, sans-serif';
+                    overlayCtx.fillText('✗ Bukan Wajah Anda!', bx + 6, by - 9);
+                    return;
+                }
+                
                 currentMatch = { ...match, descriptor: desc };
 
                 // Confidence 0-100 (jarak 0=100%, jarak 0.55=0%)
                 const conf = Math.round(Math.max(0, (1 - match.distance / THRESH)) * 100);
+                
+                console.log('✅ MATCH SUCCESS - Distance:', match.distance.toFixed(4), 'Confidence:', conf + '%');
 
                 setStatusPill(
                     '<ion-icon name="checkmark-circle-outline" style="vertical-align:-2px;margin-right:4px;"></ion-icon> Wajah Dikenali!',
