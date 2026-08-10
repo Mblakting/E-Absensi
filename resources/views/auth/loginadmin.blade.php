@@ -1,19 +1,11 @@
 
 <!doctype html>
-<!--
-* Tabler - Premium and Open Source dashboard template with responsive and high quality UI.
-* @version 1.0.0-beta17
-* @link https://tabler.io
-* Copyright 2018-2023 The Tabler Authors
-* Copyright 2018-2023 codecalm.net Paweł Kuna
-* Licensed under MIT (https://github.com/tabler/tabler/blob/master/LICENSE)
--->
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
-    <title>Sign in with illustration - Tabler - Premium and Open Source dashboard template with responsive and high quality UI.</title>
+    <title>Login Admin - {{ config('app.name', 'E-Presensi') }}</title>
     <!-- CSS files -->
     <link href="{{ asset('tabler/dist/css/tabler.min.css?1674944402') }}" rel="stylesheet"/>
     <link href="{{ asset('tabler/dist/css/tabler-flags.min.css?1674944402') }}" rel="stylesheet"/>
@@ -37,15 +29,12 @@
         <div class="row align-items-center g-4">
           <div class="col-lg">
             <div class="container-tight">
-              <div class="text-center mb-4">
-                <a href="." class="navbar-brand navbar-brand-autodark"><img src="./static/logo.svg" height="36" alt=""></a>
-              </div>
               <div class="card card-md">
                 <div class="card-body">
-                  <h2 class="h2 text-center mb-4">
+                  <h1 class="h2 text-center mb-4">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2 text-primary" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18.9 7a8 8 0 0 1 1.1 5v1a6 6 0 0 0 .8 3" /><path d="M8 11a4 4 0 0 1 8 0v1a10 10 0 0 0 2 6" /><path d="M12 11v2a14 14 0 0 0 2.5 8" /><path d="M8 15a18 18 0 0 0 1.8 6" /><path d="M4.9 19a22 22 0 0 1 -.9 -7v-1a8 8 0 0 1 12 -6.95" /></svg>
                     Login Admin
-                  </h2>
+                  </h1>
                   <p class="text-center text-muted mb-4">Masuk ke panel administrasi E-Presensi</p>
                   @if (session('warning'))
                   <div class="alert alert-warning">
@@ -92,13 +81,12 @@
             </div>
           </div>
           <div class="col-lg d-none d-lg-block">
-            <img src="{{asset('tabler/static/illustrations/undraw_secure_login_pdn4.svg')}}" height="300" class="d-block mx-auto" alt="">
+            <img src="{{ asset('assets/img/login/login.jpg') }}" class="d-block mx-auto w-100" style="border-radius:16px; object-fit:cover; max-height:480px;" alt="E-Presensi">
           </div>
         </div>
       </div>
     </div>
-    <!-- Libs JS -->
-    <!-- Tabler Core -->
+    <!-- Scripts -->
     <script src="{{ asset('tabler/dist/js/tabler.min.js?1674944402') }}" defer></script>
     <script src="{{ asset('tabler/dist/js/demo.min.js?1674944402') }}" defer></script>
     <script>
