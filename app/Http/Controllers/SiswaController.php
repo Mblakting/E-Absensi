@@ -44,21 +44,28 @@ class SiswaController extends Controller
             'nisn'         => 'required|string|max:20|unique:siswa,nisn',
             'nama_lengkap' => 'required|string|max:100',
             'kelas'        => 'required|string|max:20',
+            'kode_jurusan' => 'required|string|exists:jurusan,kode_jurusan',
+            'no_hp'        => 'nullable|string|max:20',
+            'foto'         => 'nullable|image|max:2048',
         ]);
 
         try {
+            $fotoName = null;
+            if ($request->hasFile('foto')) {
+                $fotoName = time() . '_' . $request->file('foto')->getClientOriginalName();
+                $request->file('foto')->storeAs('uploads/foto_siswa', $fotoName, 'public');
+            }
+
             DB::table('siswa')->insert([
-                'nisn'           => $request->nisn,
-                'nama_lengkap'   => $request->nama_lengkap,
-                'kelas'          => $request->kelas,
-                'no_hp'          => null,
-                'alamat'         => null,
-                'nama_orang_tua' => null,
-                'kode_jurusan'   => null,
-                'foto'           => null,
-                'password'       => Hash::make('12345'),
-                'created_at'     => now(),
-                'updated_at'     => now(),
+                'nisn'         => $request->nisn,
+                'nama_lengkap' => $request->nama_lengkap,
+                'kelas'        => $request->kelas,
+                'no_hp'        => $request->no_hp,
+                'kode_jurusan' => $request->kode_jurusan,
+                'foto'         => $fotoName,
+                'password'     => Hash::make('12345'),
+                'created_at'   => now(),
+                'updated_at'   => now(),
             ]);
 
             return redirect()->back()->with('success', 'Data siswa berhasil disimpan!');

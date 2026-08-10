@@ -173,46 +173,39 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <form action="{{ route('siswa.store') }}" method="POST" id="frmSiswa">
+            <form action="{{ route('siswa.store') }}" method="POST" id="frmSiswa" enctype="multipart/form-data">
                 @csrf
-                <div class="row">
-                    <div class="col-12">
-                        <div class="input-icon mb-3">
-                                <span class="input-icon-addon">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M8 13h1v3h-1z" /><path d="M12 13v3" /><path d="M15 13h1v3h-1z" /></svg>
-                                </span>
-                                <input type="text" value="" class="form-control" name="nisn" id="nisn" placeholder="NISN">
-                              </div>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label">NISN <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="nisn" id="nisn" placeholder="Contoh: 0012345678">
                 </div>
-                <div class="row">
-                    <div class="col-12">
-                        <div class="input-icon mb-3">
-                                <span class="input-icon-addon">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="icon"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 2a5 5 0 1 1 -5 5l.005 -.217a5 5 0 0 1 4.995 -4.783z" /><path d="M14 14a5 5 0 0 1 5 5v1a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-1a5 5 0 0 1 5 -5h4z" /></svg>
-                                </span>
-                                <input type="text" value="" class="form-control" name="nama_lengkap" id="nama_lengkap" placeholder="Nama Lengkap Siswa">
-                              </div>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="nama_lengkap" id="nama_lengkap" placeholder="Nama lengkap siswa">
                 </div>
-                <div class="row">
-                    <div class="col-12">
-                        <div class="input-icon mb-3">
-                                <span class="input-icon-addon">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 19h-3a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v11a1 1 0 0 1 -1 1" /><path d="M11 16m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v1a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z" /></svg>
-                                </span>
-                                <input type="text" value="" class="form-control" name="kelas" id="kelas" placeholder="Kelas">
-                              </div>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label">Kelas <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="kelas" id="kelas" placeholder="Contoh: XII TKJ 1">
                 </div>
-                <div class="row mt-2">
-                    <div class="col-12">
-                        <div class="form-group">
-                            <button class="btn btn-primary w-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 14l11 -11" /><path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5" /></svg>    
-                            Simpan</button>
-                        </div>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label">No HP</label>
+                    <input type="text" class="form-control" name="no_hp" id="no_hp" placeholder="Contoh: 081234567890">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Jurusan <span class="text-danger">*</span></label>
+                    <select name="kode_jurusan" id="kode_jurusan_tambah" class="form-select">
+                        <option value="">Pilih Jurusan</option>
+                        @foreach($jurusan as $j)
+                            <option value="{{ $j->kode_jurusan }}">{{ $j->nama_jurusan }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Foto</label>
+                    <input type="file" name="foto" class="form-control" accept="image/*">
+                </div>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary w-100">Simpan</button>
                 </div>
             </form> 
           </div>
@@ -290,41 +283,28 @@
             var nisn = $("#nisn").val();
             var nama_lengkap = $("#nama_lengkap").val();
             var kelas = $("#kelas").val();
+            var kode_jurusan = $("#kode_jurusan_tambah").val();
 
             if(nisn==""){
-                Swal.fire({
-                title: 'Warning!',
-                text: 'NISN harus diisi',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-                }).then((result)=>{
-                    $("#nisn").focus();
-                })
+                Swal.fire({ title:'Warning!', text:'NISN harus diisi', icon:'warning', confirmButtonText:'OK' })
+                    .then(()=>{ $("#nisn").focus(); });
                 return false;
             }
-            else if(nama_lengkap==""){
-                Swal.fire({
-                title: 'Warning!',
-                text: 'Nama harus diisi',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-                }).then((result)=>{
-                    $("#nama_lengkap").focus();
-                })
+            if(nama_lengkap==""){
+                Swal.fire({ title:'Warning!', text:'Nama harus diisi', icon:'warning', confirmButtonText:'OK' })
+                    .then(()=>{ $("#nama_lengkap").focus(); });
                 return false;
             }
-            else if(kelas==""){
-                Swal.fire({
-                title: 'Warning!',
-                text: 'Kelas harus diisi',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-                }).then((result)=>{
-                    $("#kelas").focus();
-                })
+            if(kelas==""){
+                Swal.fire({ title:'Warning!', text:'Kelas harus diisi', icon:'warning', confirmButtonText:'OK' })
+                    .then(()=>{ $("#kelas").focus(); });
                 return false;
             }
-
+            if(kode_jurusan==""){
+                Swal.fire({ title:'Warning!', text:'Jurusan harus dipilih', icon:'warning', confirmButtonText:'OK' })
+                    .then(()=>{ $("#kode_jurusan_tambah").focus(); });
+                return false;
+            }
         })
     });
 </script>
