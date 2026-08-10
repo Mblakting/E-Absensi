@@ -255,9 +255,7 @@
                 cancelButtonColor: '#3085d6',
             }).then((result) => {
                 if (result.isConfirmed) {
-                    form.submit();
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    Swal.fire("Dibatalkan", "Data siswa tidak jadi dihapus.", "info");
+                    form[0].submit();
                 }
             });
         });
