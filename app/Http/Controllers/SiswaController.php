@@ -18,7 +18,7 @@ class SiswaController extends Controller
     {
         $query = Siswa::query()
             ->select('siswa.*', 'nama_jurusan')
-            ->join('jurusan', 'siswa.kode_jurusan', '=', 'jurusan.kode_jurusan')
+            ->leftJoin('jurusan', 'siswa.kode_jurusan', '=', 'jurusan.kode_jurusan')
             ->orderBy('nama_lengkap');
 
         if (!empty($request->nama_siswa)) {
@@ -44,35 +44,21 @@ class SiswaController extends Controller
             'nisn'         => 'required|string|max:20|unique:siswa,nisn',
             'nama_lengkap' => 'required|string|max:100',
             'kelas'        => 'required|string|max:20',
-            'no_hp'        => 'nullable|string|max:15',
-            'kode_jurusan' => 'required|string|exists:jurusan,kode_jurusan',
-            'foto'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $nisn      = $request->nisn;
-        $diskPath  = 'uploads/foto_siswa';
-        $fotoName  = '';
-
-        if ($request->hasFile('foto')) {
-            $fotoName = $nisn . '.' . $request->file('foto')->getClientOriginalExtension();
-        }
-
         try {
-            // Upload foto dulu sebelum insert ke DB
-            if ($request->hasFile('foto')) {
-                $request->file('foto')->storeAs($diskPath, $fotoName, 'public');
-            }
-
             DB::table('siswa')->insert([
-                'nisn'         => $nisn,
-                'nama_lengkap' => $request->nama_lengkap,
-                'kelas'        => $request->kelas,
-                'no_hp'        => $request->no_hp,
-                'kode_jurusan' => $request->kode_jurusan,
-                'foto'         => $fotoName,
-                'password'     => Hash::make('12345'),
-                'created_at'   => now(),
-                'updated_at'   => now(),
+                'nisn'           => $request->nisn,
+                'nama_lengkap'   => $request->nama_lengkap,
+                'kelas'          => $request->kelas,
+                'no_hp'          => null,
+                'alamat'         => null,
+                'nama_orang_tua' => null,
+                'kode_jurusan'   => null,
+                'foto'           => null,
+                'password'       => Hash::make('12345'),
+                'created_at'     => now(),
+                'updated_at'     => now(),
             ]);
 
             return redirect()->back()->with('success', 'Data siswa berhasil disimpan!');
@@ -106,9 +92,6 @@ class SiswaController extends Controller
         $request->validate([
             'nama_lengkap' => 'required|string|max:100',
             'kelas'        => 'required|string|max:20',
-            'no_hp'        => 'nullable|string|max:15',
-            'kode_jurusan' => 'required|string|exists:jurusan,kode_jurusan',
-            'foto'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
@@ -117,29 +100,10 @@ class SiswaController extends Controller
             return redirect()->back()->with('warning', 'Data siswa tidak ditemukan.');
         }
 
-        $diskPath = 'uploads/foto_siswa';
-        $fotoName = $siswa->foto;
-
-        if ($request->hasFile('foto')) {
-            $fotoName = $nisn . '.' . $request->file('foto')->getClientOriginalExtension();
-        }
-
         try {
-            // Upload foto baru dulu sebelum update DB
-            if ($request->hasFile('foto')) {
-                // Hapus foto lama jika ada
-                if (!empty($siswa->foto)) {
-                    Storage::disk('public')->delete($diskPath . '/' . $siswa->foto);
-                }
-                $request->file('foto')->storeAs($diskPath, $fotoName, 'public');
-            }
-
             DB::table('siswa')->where('nisn', $nisn)->update([
                 'nama_lengkap' => $request->nama_lengkap,
                 'kelas'        => $request->kelas,
-                'no_hp'        => $request->no_hp,
-                'kode_jurusan' => $request->kode_jurusan,
-                'foto'         => $fotoName,
                 'updated_at'   => now(),
             ]);
 

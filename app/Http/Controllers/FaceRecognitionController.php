@@ -120,7 +120,7 @@ class FaceRecognitionController extends Controller
     {
         $siswa = DB::table('siswa')
             ->select('siswa.*', 'nama_jurusan')
-            ->join('jurusan', 'siswa.kode_jurusan', '=', 'jurusan.kode_jurusan')
+            ->leftJoin('jurusan', 'siswa.kode_jurusan', '=', 'jurusan.kode_jurusan')
             ->where('siswa.nisn', $nisn)
             ->first();
 

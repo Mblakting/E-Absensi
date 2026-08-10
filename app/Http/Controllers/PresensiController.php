@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use App\Models\SchoolSetting;
 use App\Traits\HasversineDistance;
 
 class PresensiController extends Controller
@@ -21,13 +23,16 @@ class PresensiController extends Controller
     {
         $nisn    = Auth::guard('siswa')->id();
         $hariini = now()->toDateString();
+        $sekolah = Schema::hasTable('school_settings')
+            ? SchoolSetting::query()->first()
+            : null;
 
         $cek = DB::table('presensi')
             ->where('nisn', $nisn)
             ->where('tgl_presensi', $hariini)
             ->count();
 
-        return view('presensi.create', compact('cek'));
+        return view('presensi.create', compact('cek', 'sekolah'));
     }
 
     /**
@@ -153,16 +158,22 @@ class PresensiController extends Controller
         $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
 
         $request->validate([
-            'nama_lengkap' => 'required|string|max:100',
-            'no_hp'        => 'nullable|string|max:15',
-            'password'     => 'nullable|string|min:5|confirmed',
-            'foto'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'nama_lengkap'   => 'required|string|max:100',
+            'kelas'          => 'required|string|max:20',
+            'no_hp'          => 'required|string|max:20',
+            'alamat'         => 'required|string|max:500',
+            'nama_orang_tua' => 'required|string|max:100',
+            'password'       => 'nullable|string|min:5|confirmed',
+            'foto'           => 'required|image|mimes:jpg,jpeg,png|max:1024',
         ]);
 
         $data = [
-            'nama_lengkap' => $request->nama_lengkap,
-            'no_hp'        => $request->no_hp,
-            'updated_at'   => now(),
+            'nama_lengkap'   => $request->nama_lengkap,
+            'kelas'          => $request->kelas,
+            'no_hp'          => $request->no_hp,
+            'alamat'         => $request->alamat,
+            'nama_orang_tua' => $request->nama_orang_tua,
+            'updated_at'     => now(),
         ];
 
         if ($request->filled('password')) {
@@ -170,10 +181,9 @@ class PresensiController extends Controller
         }
 
         $fotoLama = $siswa->foto;
-        $fotoBaru = $fotoLama;
 
         if ($request->hasFile('foto')) {
-            $fotoBaru     = $nisn . '.' . $request->file('foto')->getClientOriginalExtension();
+            $fotoBaru = $nisn . '.' . $request->file('foto')->getClientOriginalExtension();
             $data['foto'] = $fotoBaru;
 
             // Upload foto baru dulu
@@ -342,7 +352,7 @@ class PresensiController extends Controller
         $presensi = DB::table('presensi')
             ->select('presensi.*', 'nama_lengkap', 'nama_jurusan')
             ->join('siswa', 'presensi.nisn', '=', 'siswa.nisn')
-            ->join('jurusan', 'siswa.kode_jurusan', '=', 'jurusan.kode_jurusan')
+            ->leftJoin('jurusan', 'siswa.kode_jurusan', '=', 'jurusan.kode_jurusan')
             ->where('tgl_presensi', $tanggal)
             ->orderBy('jam_in')
             ->get();

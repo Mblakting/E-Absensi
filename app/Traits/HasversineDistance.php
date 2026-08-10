@@ -2,6 +2,9 @@
 
 namespace App\Traits;
 
+use App\Models\SchoolSetting;
+use Illuminate\Support\Facades\Schema;
+
 /**
  * Trait untuk menghitung jarak antara dua koordinat GPS
  * menggunakan formula Haversine.
@@ -37,16 +40,27 @@ trait HasversineDistance
             return ['valid' => false, 'message' => 'Format lokasi tidak valid.'];
         }
 
-        $latUser = (float) trim($parts[0]);
-        $lonUser = (float) trim($parts[1]);
+        $latUserRaw = trim($parts[0]);
+        $lonUserRaw = trim($parts[1]);
+
+        if (!is_numeric($latUserRaw) || !is_numeric($lonUserRaw)) {
+            return ['valid' => false, 'message' => 'Koordinat GPS tidak valid.'];
+        }
+
+        $latUser = (float) $latUserRaw;
+        $lonUser = (float) $lonUserRaw;
 
         if ($latUser < -90 || $latUser > 90 || $lonUser < -180 || $lonUser > 180) {
             return ['valid' => false, 'message' => 'Koordinat GPS tidak valid.'];
         }
 
-        $latSekolah = (float) config('school.latitude', -7.671325);
-        $lonSekolah = (float) config('school.longitude', 110.589607);
-        $radiusMax  = (int)   config('school.radius_meter', 500);
+        $sekolah = Schema::hasTable('school_settings')
+            ? SchoolSetting::query()->first()
+            : null;
+
+        $latSekolah = $sekolah ? (float) $sekolah->latitude : (float) config('school.latitude', -7.671325);
+        $lonSekolah = $sekolah ? (float) $sekolah->longitude : (float) config('school.longitude', 110.589607);
+        $radiusMax  = $sekolah ? (int) $sekolah->radius_meters : (int) config('school.radius_meters', 100);
 
         $jarak  = $this->distance($latSekolah, $lonSekolah, $latUser, $lonUser);
         $radius = (int) round($jarak);
@@ -54,7 +68,7 @@ trait HasversineDistance
         if ($radius > $radiusMax) {
             return [
                 'valid'   => false,
-                'message' => 'Anda berada di luar area sekolah (' . $radius . ' meter dari sekolah)!',
+                'message' => 'Anda berada di luar radius sekolah. Jarak Anda ' . $radius . ' meter, maksimal ' . $radiusMax . ' meter.',
                 'type'    => 'out',
                 'jarak'   => $radius,
             ];
