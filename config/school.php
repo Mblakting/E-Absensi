@@ -11,15 +11,15 @@ return [
     |
     */
 
-    'latitude'     => env('SCHOOL_LATITUDE', -7.671325),
-    'longitude'    => env('SCHOOL_LONGITUDE', 110.589607),
+    'latitude'      => env('SCHOOL_LATITUDE', -7.671325),
+    'longitude'     => env('SCHOOL_LONGITUDE', 110.589607),
 
     /*
      * Radius maksimum dalam meter dari lokasi sekolah.
      * Siswa harus berada dalam radius ini untuk bisa absen.
-     * Nilai default: 500 meter.
+     * Nilai default: 100 meter.
      */
-    'radius_meter' => env('SCHOOL_RADIUS', 500),
+    'radius_meters' => env('SCHOOL_RADIUS_METERS', env('SCHOOL_RADIUS', 100)),
 
     /*
      * Nama sekolah (ditampilkan di UI).
