@@ -319,7 +319,7 @@ if (!IS_DONE) {
                     .addTo(mapInstance)
                     .bindPopup('Lokasi kamu').openPopup();
                 L.circle([{{ config('school.latitude') }}, {{ config('school.longitude') }}], {
-                    color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.12, radius: {{ config('school.radius_meter') }}
+                    color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.12, radius: {{ config('school.radius_meters') }}
                 }).addTo(mapInstance).bindPopup('Area Sekolah');
             },
             err => {

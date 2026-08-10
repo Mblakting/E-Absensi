@@ -173,7 +173,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <form action="{{ route('siswa.store') }}" method="POST" id="frmSiswa" enctype="multipart/form-data">
+            <form action="{{ route('siswa.store') }}" method="POST" id="frmSiswa">
                 @csrf
                 <div class="row">
                     <div class="col-12">
@@ -203,34 +203,6 @@
                                 </span>
                                 <input type="text" value="" class="form-control" name="kelas" id="kelas" placeholder="Kelas">
                               </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-12">
-                        <div class="input-icon mb-3">
-                                <span class="input-icon-addon">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2" /></svg>
-                                </span>
-                                <input type="text" value="" class="form-control" name="no_hp" id="no_hp" placeholder="Nomor HP">
-                              </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-12">
-                        <input type="file" name="foto" class="form-control">
-                    </div>
-                </div>
-                <div class="row mt-2">
-                    <div class="col-12">
-                        <select name="kode_jurusan" id="kode_jurusan" class="form-select">
-                            <option value="">Pilih Jurusan</option>
-                                @foreach($jurusan as $j)
-                                    <option value="{{$j->kode_jurusan}}" 
-                                        {{ request()->get('kode_jurusan') == $j->kode_jurusan ? 'selected' : '' }}>
-                                            {{$j->nama_jurusan}}
-                                    </option>
-                                @endforeach
-                        </select>
                     </div>
                 </div>
                 <div class="row mt-2">
@@ -318,8 +290,6 @@
             var nisn = $("#nisn").val();
             var nama_lengkap = $("#nama_lengkap").val();
             var kelas = $("#kelas").val();
-            var no_hp = $("#no_hp").val();
-            var kode_jurusan = $("#frmSiswa").find("#kode_jurusan").val();
 
             if(nisn==""){
                 Swal.fire({
@@ -351,28 +321,6 @@
                 confirmButtonText: 'OK'
                 }).then((result)=>{
                     $("#kelas").focus();
-                })
-                return false;
-            }
-            else if(no_hp==""){
-                Swal.fire({
-                title: 'Warning!',
-                text: 'Nomor HP harus diisi',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-                }).then((result)=>{
-                    $("#no_hp").focus();
-                })
-                return false;
-            }
-            else if(kode_jurusan==""){
-                Swal.fire({
-                title: 'Warning!',
-                text: 'Jurusan harus diisi',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-                }).then((result)=>{
-                    $("#kode_jurusan").focus();
                 })
                 return false;
             }

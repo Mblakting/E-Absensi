@@ -21,7 +21,7 @@
             color: 'green',
             fillColor: 'green',
             fillOpacity: 0.5,
-            radius: {{ config('school.radius_meter') }}
+            radius: {{ config('school.radius_meters') }}
         }).addTo(map);
     var popup = L.popup()
     .setLatLng([latitude, longitude])

@@ -57,6 +57,11 @@
 @endsection
 
 @push('myscripts')
+@php
+    $schoolLatitude = $sekolah->latitude ?? config('school.latitude');
+    $schoolLongitude = $sekolah->longitude ?? config('school.longitude');
+    $schoolRadius = $sekolah->radius_meters ?? config('school.radius_meters');
+@endphp
 <script>
     Webcam.set({
         width: 480,
@@ -91,11 +96,11 @@
         }).addTo(map);
         L.marker([lat, lng]).addTo(map);
         // Lingkaran area sekolah (dari konfigurasi)
-        L.circle([{{ config('school.latitude') }}, {{ config('school.longitude') }}], {
+        L.circle([{{ $schoolLatitude }}, {{ $schoolLongitude }}], {
             color: 'green',
             fillColor: 'green',
             fillOpacity: 0.3,
-            radius: {{ config('school.radius_meter') }}
+            radius: {{ $schoolRadius }}
         }).addTo(map);
     }
 
