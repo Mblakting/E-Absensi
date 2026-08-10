@@ -187,23 +187,6 @@
                     <label class="form-label">Kelas <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" name="kelas" id="kelas" placeholder="Contoh: XII TKJ 1">
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">No HP</label>
-                    <input type="text" class="form-control" name="no_hp" id="no_hp" placeholder="Contoh: 081234567890">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Jurusan <span class="text-danger">*</span></label>
-                    <select name="kode_jurusan" id="kode_jurusan_tambah" class="form-select">
-                        <option value="">Pilih Jurusan</option>
-                        @foreach($jurusan as $j)
-                            <option value="{{ $j->kode_jurusan }}">{{ $j->nama_jurusan }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Foto</label>
-                    <input type="file" name="foto" class="form-control" accept="image/*">
-                </div>
                 <div class="mt-3">
                     <button type="submit" class="btn btn-primary w-100">Simpan</button>
                 </div>
@@ -283,7 +266,6 @@
             var nisn = $("#nisn").val();
             var nama_lengkap = $("#nama_lengkap").val();
             var kelas = $("#kelas").val();
-            var kode_jurusan = $("#kode_jurusan_tambah").val();
 
             if(nisn==""){
                 Swal.fire({ title:'Warning!', text:'NISN harus diisi', icon:'warning', confirmButtonText:'OK' })
@@ -300,11 +282,7 @@
                     .then(()=>{ $("#kelas").focus(); });
                 return false;
             }
-            if(kode_jurusan==""){
-                Swal.fire({ title:'Warning!', text:'Jurusan harus dipilih', icon:'warning', confirmButtonText:'OK' })
-                    .then(()=>{ $("#kode_jurusan_tambah").focus(); });
-                return false;
-            }
+
         })
     });
 </script>

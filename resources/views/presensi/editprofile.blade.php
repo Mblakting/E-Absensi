@@ -63,8 +63,8 @@
         </div>
         <div class="form-group boxed">
             <div class="input-wrapper">
-                <input type="text" class="form-control @error('nama_orang_tua') is-invalid @enderror" value="{{ old('nama_orang_tua', $siswa->nama_orang_tua ?? '') }}" name="nama_orang_tua" placeholder="Nama Orang Tua / Wali" autocomplete="off">
-                @error('nama_orang_tua')
+                <input type="text" class="form-control @error('nama_ortu') is-invalid @enderror" value="{{ old('nama_ortu', $siswa->nama_ortu ?? '') }}" name="nama_ortu" placeholder="Nama Orang Tua / Wali" autocomplete="off">
+                @error('nama_ortu')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>
@@ -85,7 +85,7 @@
                 <span>
                     <strong>
                         <ion-icon name="cloud-upload-outline" role="img" class="md hydrated" aria-label="cloud upload outline"></ion-icon>
-                        <i>Upload Foto JPG/PNG Maks. 1MB</i>
+                        <i>Upload Foto JPG/PNG Maks. 1MB (Opsional)</i>
                     </strong>
                 </span>
             </label>

@@ -158,39 +158,35 @@ class PresensiController extends Controller
         $siswa = DB::table('siswa')->where('nisn', $nisn)->first();
 
         $request->validate([
-            'nama_lengkap'   => 'required|string|max:100',
-            'kelas'          => 'required|string|max:20',
-            'no_hp'          => 'required|string|max:20',
-            'alamat'         => 'required|string|max:500',
-            'nama_orang_tua' => 'required|string|max:100',
-            'password'       => 'nullable|string|min:5|confirmed',
-            'foto'           => 'required|image|mimes:jpg,jpeg,png|max:1024',
+            'nama_lengkap' => 'required|string|max:100',
+            'kelas'        => 'required|string|max:20',
+            'no_hp'        => 'nullable|string|max:20',
+            'alamat'       => 'nullable|string|max:500',
+            'nama_ortu'    => 'nullable|string|max:100',
+            'password'     => 'nullable|string|min:5|confirmed',
+            'foto'         => 'nullable|image|mimes:jpg,jpeg,png|max:1024',
         ]);
 
         $data = [
-            'nama_lengkap'   => $request->nama_lengkap,
-            'kelas'          => $request->kelas,
-            'no_hp'          => $request->no_hp,
-            'alamat'         => $request->alamat,
-            'nama_orang_tua' => $request->nama_orang_tua,
-            'updated_at'     => now(),
+            'nama_lengkap' => $request->nama_lengkap,
+            'kelas'        => $request->kelas,
+            'no_hp'        => $request->no_hp,
+            'alamat'       => $request->alamat,
+            'nama_ortu'    => $request->nama_ortu,
+            'updated_at'   => now(),
         ];
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
         }
 
-        $fotoLama = $siswa->foto;
-
         if ($request->hasFile('foto')) {
             $fotoBaru = $nisn . '.' . $request->file('foto')->getClientOriginalExtension();
-            $data['foto'] = $fotoBaru;
-
-            // Upload foto baru dulu
-            if (!empty($fotoLama)) {
-                Storage::disk('public')->delete('uploads/foto_siswa/' . $fotoLama);
+            if (!empty($siswa->foto)) {
+                Storage::disk('public')->delete('uploads/foto_siswa/' . $siswa->foto);
             }
             $request->file('foto')->storeAs('uploads/foto_siswa', $fotoBaru, 'public');
+            $data['foto'] = $fotoBaru;
         }
 
         DB::table('siswa')->where('nisn', $nisn)->update($data);

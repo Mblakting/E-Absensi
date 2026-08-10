@@ -340,7 +340,7 @@
         @forelse($leaderboard as $d)
         @php
             $lbFoto = !empty($d->foto)
-                ? url(Storage::url('uploads/foto_siswa/'.$d->foto))
+                ? asset('storage/uploads/foto_siswa/'.$d->foto)
                 : asset('assets/img/sample/avatar/avatar1.jpg');
             $rankColors = ['#FFD700','#C0C0C0','#CD7F32'];
             $rankColor  = $rankColors[$loop->index] ?? '#e9ecef';
@@ -372,7 +372,7 @@
     </div>
 </div>
 
-@push('myscripts')
+@push('myscript')
 <script>
 // Live clock di header
 (function(){
